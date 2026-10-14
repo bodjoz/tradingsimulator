@@ -163,4 +163,11 @@ th { color: var(--muted); font-weight: 500; background: var(--panel); position: 
 td.n, th.n { text-align: right; }
 tr.taxrow td { color: var(--warn); }
 tfoot td { font-weight: 600; background: var(--panel); }
+.compare tr.grp td { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; background: var(--panel); padding-top: 10px; }
+.compare tr.you td { background: rgba(78,161,255,.1); font-weight: 600; }
+.bar { position: relative; width: 120px; height: 8px; background: var(--bg); border-radius: 4px; }
+.bar::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; border-left: 1px solid var(--line); }
+.bar i { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+.bar i.pos { background: var(--up); }
+.bar i.neg { background: var(--down); }
 .actions { margin-top: 24px; text-align: center; }

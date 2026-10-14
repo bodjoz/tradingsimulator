@@ -5,6 +5,7 @@ const DAYS_PER_YEAR = 252;
 const SPEEDS = [0.5, 1, 2, 3, 5, 10, 20, 40, 80];
 const COLORS = ["#4ea1ff", "#f5a524", "#b48cff", "#2ed3b7", "#ff6b9a"];
 const LABELS = ["A", "B", "C", "D", "E"];
+const MAJOR_INDEXES = ["^GSPC", "^IXIC", "^N225", "^FTSE", "^GDAXI"];   // benchmarks on the reveal screen
 
 /* ---------- fee & tax presets ---------- */
 // spread = full bid–ask spread in %; buys fill at mid*(1+s/2), sells at mid*(1-s/2)
@@ -202,7 +203,7 @@ function buy(a, qty) {
   a.shares += qty;
   a.lots.push({ q: qty, cost: cost / qty, t: G.t });
   a.markers.push({ t: G.t, side: "buy", px: priceAt(a) });
-  G.trades.push({ t: G.t, a, side: "BUY", qty, px: ask, fee, total: -cost, pnl: null });
+  G.trades.push({ t: G.t, a, side: "BUY", qty, px: ask, mid: priceAt(a), fee, total: -cost, pnl: null });
   afterTrade();
   return null;
 }
@@ -225,7 +226,7 @@ function sell(a, qty, note) {
   G.cash += proceeds; G.feesTotal += fee; a.fees += fee; a.nTrades++;
   a.shares -= qty; a.realized += pnl;
   a.markers.push({ t: G.t, side: "sell", px: priceAt(a) });
-  G.trades.push({ t: G.t, a, side: "SELL", qty, px: bid, fee, total: proceeds, pnl, note });
+  G.trades.push({ t: G.t, a, side: "SELL", qty, px: bid, mid: priceAt(a), fee, total: proceeds, pnl, note });
   afterTrade();
   return null;
 }
@@ -639,53 +640,128 @@ function endGame() {
   showReveal();
 }
 
-// Equal-weight buy-and-hold with the same fees & taxes, for comparison.
-function benchmarkNet() {
-  const c = G.cfg, n = G.assets.length;
-  let cash = c.capital, gainST = 0, gainLT = 0, fees = 0;
-  const held = G.t >= DAYS_PER_YEAR;
-  for (const a of G.assets) {
-    const budget = c.capital / n;
-    const ask = a.px[c.prior] * (1 + c.fee.spread / 200);
+/* ---------- benchmarks ---------- */
+// Buy on day 0 and hold to the end. legs = [{ p0, p1, budget }] at mid prices.
+// Gross: fractional shares, no costs. Net: whole shares, spread, commission, and tax on the final sale.
+function buyAndHold(legs) {
+  const c = G.cfg, half = c.fee.spread / 200;
+  let gross = 0, net = 0, gain = 0;
+  for (const { p0, p1, budget } of legs) {
+    gross += budget * p1 / p0;
+    const ask = p0 * (1 + half);
     let q = Math.floor(budget / ask);
     while (q > 0 && q * ask + commission(q, ask) > budget) q--;
-    if (q <= 0) continue;
-    const buyCost = q * ask + commission(q, ask);
-    const bid = a.px[c.prior + G.t] * (1 - c.fee.spread / 200);
-    const proceeds = q * bid - commission(q, bid);
-    fees += commission(q, ask) + commission(q, bid);
-    cash += proceeds - buyCost;
-    if (held) gainLT += proceeds - buyCost; else gainST += proceeds - buyCost;
+    if (q <= 0) { net += budget; continue; }
+    const cost = q * ask + commission(q, ask);
+    const bid = p1 * (1 - half), proceeds = q * bid - commission(q, bid);
+    net += budget - cost + proceeds;
+    gain += proceeds - cost;
   }
-  // tax: buy-and-hold only realizes at the end, so it all falls in one year
-  const tax = c.taxOn ? computeTax(gainST, gainLT, 0).tax : 0;
-  return { final: cash - tax, fees, tax };
+  // buy-and-hold only realizes at the end, so all gains fall in one tax year
+  const held = G.t >= DAYS_PER_YEAR;
+  const tax = c.taxOn ? computeTax(held ? 0 : gain, held ? gain : 0, 0).tax : 0;
+  return { gross, net: net - tax };
+}
+
+// Your own trades replayed at mid prices with no commission, spread or tax.
+function playerGross() {
+  return G.trades.reduce((s, tr) => s + (tr.side === "BUY" ? -1 : tr.side === "SELL" ? 1 : 0) * tr.qty * (tr.mid || 0), G.cfg.capital);
+}
+
+const gameYears = () => Math.max(G.t, 1) / DAYS_PER_YEAR;
+const annualize = (r, yrs = gameYears()) => r <= -1 ? -1 : Math.pow(1 + r, 1 / yrs) - 1;
+
+// Every strategy on the reveal table, as final values in dollars (gross and net).
+function comparisonRows() {
+  const c = G.cfg, P = c.prior, n = G.assets.length, cap = c.capital;
+  const range = (d0, d1) => `${fmtDate(d0)} → ${fmtDate(d1)}`;
+  const windowOf = a => [a.days[P], a.days[P + G.t]];
+  const leg = (a, budget) => ({ p0: a.px[P], p1: a.px[P + G.t], budget });
+  // Indexes are compared over the same calendar window(s) as your charts; with several
+  // independent windows the capital is split equally across them.
+  const windows = (c.sync === "same" || n === 1 ? [G.assets[0]] : G.assets).map(windowOf);
+  const period = windows.length === 1 ? range(...windows[0]) : `your ${n} chart windows, 1/${n} in each`;
+
+  const rows = [{ group: "Your trading", name: "You", you: true, period, gross: playerGross(), net: G.cash }];
+  const mine = "Buy & hold the charts you played";
+  if (n > 1) rows.push({ group: mine, name: `Equal weight, all ${n} charts`, period: c.sync === "same" ? period : "each chart's own window",
+    ...buyAndHold(G.assets.map(a => leg(a, cap / n))) });
+  for (const a of G.assets)
+    rows.push({ group: mine, name: `All in ${a.label}: ${a.meta.name}`, color: a.color, period: range(...windowOf(a)), ...buyAndHold([leg(a, cap)]) });
+
+  for (const tk of MAJOR_INDEXES) {
+    const idx = UNIVERSE.find(u => u.ticker === tk);
+    if (!idx) continue;
+    // an index you played reuses its chart's window and prices, so both rows agree exactly
+    const played = G.assets.find(a => a.meta === idx);
+    const wins = played && windows.length === 1 ? [windowOf(played)] : windows;
+    const legs = wins !== windows ? [leg(played, cap)] : wins.map(([d0, d1]) => {
+      const i0 = lowerBound(idx.days, d0), i1 = lowerBound(idx.days, d1 + 1) - 1;
+      if (i0 >= idx.px.length || i1 <= i0 || idx.days[i0] - d0 > 7 || d1 - idx.days[i1] > 7) return null;
+      // priced like a fund at 100 so share-based commissions behave sensibly
+      return { p0: 100, p1: 100 * idx.px[i1] / idx.px[i0], budget: cap / wins.length };
+    });
+    const row = { group: "Major indexes", name: idx.name + (played ? ` (= chart ${played.label})` : ""),
+      period: wins.length === 1 ? range(...wins[0]) : period };
+    if (legs.every(Boolean)) Object.assign(row, buyAndHold(legs));
+    else Object.assign(row, { missing: `no data before ${fmtDate(idx.days[0])}` });
+    rows.push(row);
+  }
+  return rows;
+}
+
+function renderComparison(rows) {
+  const cap = G.cfg.capital, you = rows[0].net;
+  const maxAbs = Math.max(...rows.filter(r => !r.missing).map(r => Math.abs(r.net / cap - 1)), 1e-9);
+  let group = null;
+  const body = rows.map(r => {
+    const head = r.group !== group ? `<tr class="grp"><td colspan="9">${(group = r.group)}</td></tr>` : "";
+    const name = `${r.color ? `<span class="dot" style="display:inline-block;background:${r.color}"></span> ` : ""}${r.name}`;
+    if (r.missing) return head + `<tr><td>${name}</td><td class="muted">${r.period}</td><td colspan="7" class="muted">${r.missing}</td></tr>`;
+    const g = r.gross / cap - 1, nt = r.net / cap - 1, diff = you - r.net;
+    const w = Math.abs(nt) / maxAbs * 50;
+    const bar = `<div class="bar"><i class="${nt < 0 ? "neg" : "pos"}" style="${nt < 0 ? "right" : "left"}:50%;width:${w}%"></i></div>`;
+    return head + `<tr class="${r.you ? "you" : ""}">
+      <td>${name}</td><td class="muted">${r.period}</td>
+      <td class="n ${cls(g)}">${fmtPct(g, 1)}</td><td class="n ${cls(g)}">${fmtPct(annualize(g), 1)}</td>
+      <td class="n ${cls(nt)}">${fmtPct(nt, 1)}</td><td class="n ${cls(nt)}">${fmtPct(annualize(nt), 1)}</td>
+      <td>${bar}</td>
+      <td class="n">${fmt$(r.net, 0)}</td>
+      <td class="n ${r.you ? "" : cls(diff)}">${r.you ? "" : (diff > 0 ? "+" : "") + fmt$(diff, 0)}</td></tr>`;
+  }).join("");
+  $("#reveal-compare").innerHTML = `
+    <thead><tr><th>Strategy</th><th>Period</th>
+      <th class="n">Gross total</th><th class="n">Gross / yr</th><th class="n">Net total</th><th class="n">Net / yr</th>
+      <th>Net return</th><th class="n">Net final</th><th class="n">You vs. it (net)</th></tr></thead>
+    <tbody>${body}</tbody>`;
 }
 
 function showReveal() {
   const c = G.cfg;
   $("#game").hidden = true; $("#reveal").hidden = false; window.scrollTo(0, 0);
 
-  const final = G.cash, ret = final / c.capital - 1;
-  const yrs = (G.t + 1) / DAYS_PER_YEAR;
-  const ann = Math.pow(final / c.capital, 1 / Math.max(yrs, 1 / 252)) - 1;
-  const bm = benchmarkNet(), bret = bm.final / c.capital - 1;
+  const cmp = comparisonRows();
+  const final = G.cash, ret = final / c.capital - 1, yrs = gameYears();
+  const gross = cmp[0].gross, gret = gross / c.capital - 1;
+  const spreadCost = G.trades.reduce((s, tr) => s + (tr.mid ? tr.qty * Math.abs(tr.px - tr.mid) : 0), 0);
   const nTrades = G.trades.filter(t => t.side !== "TAX").length;
-  const beat = final - bm.final;
+  const ranked = cmp.filter(r => !r.missing).sort((x, y) => y.net - x.net);
+  const rank = ranked.findIndex(r => r.you) + 1, best = ranked[0].you ? ranked[1] : ranked[0];
 
   let verdict;
   if (nTrades === 0) verdict = "You didn't trade at all — your money sat in cash the whole time.";
-  else if (beat > 0) verdict = `You beat simply buying all ${G.assets.length} charts on day 1 and holding by <b class="up">${fmt$(beat, 0)}</b>.`;
-  else verdict = `Buying all ${G.assets.length} charts on day 1 and doing nothing would have left you <b class="down">${fmt$(-beat, 0)}</b> richer.`;
+  else if (rank === 1) verdict = `You beat every benchmark — <b class="up">${fmt$(final - best.net, 0)}</b> ahead of the runner-up (${best.name}).`;
+  else verdict = `You finished <b>#${rank} of ${ranked.length}</b> on net return. The best choice was ${best.name}, which would have left you <b class="down">${fmt$(best.net - final, 0)}</b> richer.`;
 
   $("#reveal-summary").innerHTML = `
     <div class="tile"><span>Final value (after fees${c.taxOn ? " & taxes" : ""})</span><b>${fmt$(final, 0)}</b><small>from ${fmt$(c.capital, 0)}</small></div>
-    <div class="tile"><span>Total return</span><b class="${cls(ret)}">${fmtPct(ret)}</b><small>${fmtPct(ann)} / yr over ${yrs.toFixed(1)} game yrs</small></div>
-    <div class="tile"><span>Buy &amp; hold, equal weight</span><b class="${cls(bret)}">${fmtPct(bret)}</b><small>${fmt$(bm.final, 0)} net</small></div>
+    <div class="tile"><span>Net return</span><b class="${cls(ret)}">${fmtPct(ret)}</b><small>${fmtPct(annualize(ret))} / yr over ${yrs.toFixed(1)} game yrs</small></div>
+    <div class="tile"><span>Gross return (before costs)</span><b class="${cls(gret)}">${fmtPct(gret)}</b><small>${fmtPct(annualize(gret))} / yr</small></div>
     <div class="tile"><span>Trades</span><b>${nTrades}</b><small>incl. final liquidation</small></div>
-    <div class="tile"><span>Fees paid</span><b>${fmt$(G.feesTotal)}</b><small>${c.fee.name}</small></div>
+    <div class="tile"><span>Fees + spread paid</span><b>${fmt$(G.feesTotal + spreadCost, 0)}</b><small>${fmt$(G.feesTotal, 0)} fees · ${fmt$(spreadCost, 0)} spread</small></div>
     ${c.taxOn ? `<div class="tile"><span>Taxes paid</span><b>${fmt$(G.taxesPaid)}</b><small>${c.tax.name}</small></div>` : ""}
     <div class="verdict">${verdict}</div>`;
+  renderComparison(cmp);
 
   const host = $("#reveal-assets");
   host.innerHTML = "";

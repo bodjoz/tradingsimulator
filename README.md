@@ -8,7 +8,9 @@ Open `index.html` in a browser (no server or install needed).
 - Prices are rescaled and dates hidden; you trade at each day's close, paying the bid–ask spread plus broker commission.
 - `Space` pauses or resumes, `→` steps one day, `+`/`−` changes speed. The `Full`/`1Y`/`3M` buttons and `Log` change the chart view.
 - Optional capital-gains tax: you can pick short- or long-term rates, an annual allowance and loss carry-forward. Tax is settled every 252 trading days.
-- At the end, open positions are liquidated. You then see which assets and dates you traded, every trade, and a comparison with an equal-weight buy-and-hold.
+- At the end, open positions are liquidated. You then see which assets and dates you traded and every trade. A table compares your gross and net return, both total and annualized, with:
+  - buying and holding each chart you played on its own, and all of them at equal weight
+  - buying and holding five major indexes over the same dates: S&P 500, Nasdaq, Nikkei 225, FTSE 100 and DAX.
 
 ## Data
 `data.js` holds daily split- and dividend-adjusted closes from Yahoo Finance. Run this to refresh it or to add tickers:
