@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blind Market</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============ SETUP ============ -->
+<section id="setup" class="screen">
+  <div class="setup-card">
+    <h1>Blind Market</h1>
+    <p class="lede">Trade real historical price charts without knowing what they are or when they happened.
+      Indexes and big-name stocks are drawn at random; everything is revealed at the end.</p>
+
+    <form id="setup-form">
+      <div class="grid2">
+        <label>Starting capital
+          <select name="capital">
+            <option value="10000">$10,000</option>
+            <option value="100000" selected>$100,000</option>
+            <option value="1000000">$1,000,000</option>
+          </select>
+        </label>
+        <label>Number of charts
+          <select name="count">
+            <option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option>
+          </select>
+        </label>
+        <label>Session length
+          <select name="years">
+            <option value="0.5">6 months</option>
+            <option value="1">1 year</option>
+            <option value="2" selected>2 years</option>
+            <option value="5">5 years</option>
+            <option value="10">10 years</option>
+          </select>
+        </label>
+        <label>Visible history before start
+          <select name="prior">
+            <option value="0">None</option>
+            <option value="126">6 months</option>
+            <option value="252" selected>1 year</option>
+            <option value="504">2 years</option>
+          </select>
+        </label>
+        <label>Universe
+          <select name="pool">
+            <option value="all" selected>Indexes + stocks</option>
+            <option value="Index">Indexes only</option>
+            <option value="Stock">Stocks only</option>
+          </select>
+        </label>
+        <label>Time periods
+          <select name="sync">
+            <option value="indep" selected>Each chart from a random period</option>
+            <option value="same">All charts from the same period</option>
+          </select>
+        </label>
+      </div>
+
+      <h2>Trading costs</h2>
+      <div class="grid2">
+        <label>Broker model
+          <select name="fees" id="fee-preset"></select>
+        </label>
+        <div class="hint" id="fee-desc"></div>
+      </div>
+      <div class="grid4 custom" id="fee-custom" hidden>
+        <label>Flat / trade ($)<input name="f_flat" type="number" step="0.01" min="0" value="0"></label>
+        <label>% of value<input name="f_pct" type="number" step="0.01" min="0" value="0.1"></label>
+        <label>Per share ($)<input name="f_share" type="number" step="0.001" min="0" value="0"></label>
+        <label>Minimum ($)<input name="f_min" type="number" step="0.01" min="0" value="0"></label>
+        <label>Bid–ask spread (%)<input name="f_spread" type="number" step="0.01" min="0" value="0.05"></label>
+      </div>
+
+      <h2>Capital-gains tax <span class="opt">optional</span></h2>
+      <div class="grid2">
+        <label>Tax regime
+          <select name="tax" id="tax-preset"></select>
+        </label>
+        <div class="hint" id="tax-desc"></div>
+      </div>
+      <div class="grid4 custom" id="tax-custom" hidden>
+        <label>Short-term rate (%)<input name="t_st" type="number" step="0.1" min="0" value="30"></label>
+        <label>Long-term rate (%)<input name="t_lt" type="number" step="0.1" min="0" value="15"></label>
+        <label>Annual allowance ($)<input name="t_allow" type="number" step="1" min="0" value="0"></label>
+      </div>
+
+      <label class="check"><input type="checkbox" name="autopause"> Auto-pause while I type an order</label>
+
+      <button type="submit" class="primary big">Start game</button>
+      <p class="hint small">Prices are rescaled and dates hidden so you can't recognise the chart by its level.
+        One game year = 252 trading days. Keys: <kbd>Space</kbd> pause, <kbd>→</kbd> step one day, <kbd>+</kbd>/<kbd>−</kbd> speed.</p>
+    </form>
+  </div>
+</section>
+
+<!-- ============ GAME ============ -->
+<section id="game" class="screen" hidden>
+  <header class="topbar">
+    <div class="clock">
+      <div class="big-num" id="clock-day">Day 0</div>
+      <div class="sub" id="clock-sub">Year 1</div>
+      <div class="progress"><div id="progress-bar"></div></div>
+    </div>
+    <div class="controls">
+      <button id="btn-play" class="primary" title="Space">▶ Play</button>
+      <button id="btn-step" title="→">Step +1 day</button>
+      <div class="speed">
+        <button id="speed-down" title="−">−</button>
+        <span id="speed-label">5 d/s</span>
+        <button id="speed-up" title="+">+</button>
+      </div>
+      <div class="seg" id="view-seg">
+        <button data-view="full" class="on">Full</button>
+        <button data-view="1y">1Y</button>
+        <button data-view="3m">3M</button>
+      </div>
+      <label class="check inline"><input type="checkbox" id="log-scale"> Log</label>
+      <button id="btn-end" class="danger">End &amp; reveal</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <main id="charts" class="charts"></main>
+    <aside class="side">
+      <div class="panel">
+        <h3>Portfolio</h3>
+        <dl class="stats" id="stats"></dl>
+      </div>
+      <div class="panel">
+        <h3>Equity <span class="legend"><i class="sw you"></i>You <i class="sw bh"></i>Equal-weight buy &amp; hold</span></h3>
+        <canvas id="equity" height="140"></canvas>
+      </div>
+      <div class="panel grow">
+        <h3>Trade log</h3>
+        <ol class="log" id="log"></ol>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ============ REVEAL ============ -->
+<section id="reveal" class="screen" hidden>
+  <div class="reveal-wrap">
+    <h1>The reveal</h1>
+    <div id="reveal-summary" class="summary"></div>
+    <h2>What you were trading</h2>
+    <div id="reveal-assets" class="reveal-assets"></div>
+    <h2>Your trades</h2>
+    <div class="table-wrap"><table id="reveal-trades"></table></div>
+    <p class="hint small">* Real prices are split- and dividend-adjusted closes (total return), so older stock prices
+      look lower than what was quoted at the time. Index levels are unadjusted. Data: Yahoo Finance daily closes.</p>
+    <div class="actions">
+      <button id="btn-again" class="primary big">Play again</button>
+    </div>
+  </div>
+</section>
+
+<script src="data.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
