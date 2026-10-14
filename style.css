@@ -62,9 +62,26 @@ label.check.inline { margin: 0; }
 .hint { color: var(--muted); font-size: 12.5px; align-self: end; padding-bottom: 6px; }
 .hint.small { font-size: 12px; margin-top: 14px; }
 .opt { font-size: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 1px 6px; margin-left: 6px; text-transform: none; letter-spacing: 0; }
+label.check.stage-toggle { margin: 0 0 12px; }
+.stage-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 14px 0 8px; font-size: 13px; }
+.stage-head button { padding: 3px 10px; font-size: 12px; }
+.pick-lists {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 16px; max-height: 340px; overflow: auto;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); padding: 10px 12px;
+}
+.pick-group h4 { margin: 4px 0 6px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.pick-group label { flex-direction: row; align-items: center; gap: 7px; padding: 2px 0; font-size: 13px; color: var(--text); cursor: pointer; }
+.pick-group label input { width: auto; margin: 0; }
+.pick-group label small { margin-left: auto; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+.pick-group label.na { opacity: .4; }
+.pick-group label.na.on { opacity: 1; color: var(--down); }
+.stage-status { padding: 8px 0 0; }
+.stage-status.err { color: var(--down); }
+select:disabled, input:disabled { opacity: .5; }
 @media (max-width: 640px) {
   .grid2 { grid-template-columns: 1fr; }
   .grid4 { grid-template-columns: 1fr 1fr; }
+  .pick-lists { grid-template-columns: 1fr; }
 }
 
 /* ---------- game ---------- */

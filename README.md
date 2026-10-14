@@ -5,6 +5,7 @@ Open `index.html` in a browser (no server or install needed).
 - 1–5 anonymous charts are drawn at random from 59 real indexes and big-name stocks
   (S&P 500, Nasdaq, Nikkei, DAX, Hang Seng…, Apple, GE, Tesla, Citigroup, GameStop…),
   each from a random historical window (or all from the same window, if you choose).
+- Optionally, "Set the stage" lets you pick up to five names (grouped as indexes, US stocks and international stocks), the session start date, or both. Names without enough data for the chosen date and settings are greyed out. Picked names are shuffled across chart letters, so you still don't know which chart is which.
 - Prices are rescaled and dates hidden; you trade at each day's close, paying the bid–ask spread plus broker commission.
 - Optionally, every chart can be normalized to 100 at the start of its visible history (the pre-session period, or the session start when no history is shown), so all charts are on one comparable scale. In this mode prices are shown only as % change, and you trade dollar amounts (fractional shares) instead of share counts.
 - `Space` pauses or resumes, `→` steps one day, `+`/`−` changes speed. The `Full`/`1Y`/`3M` buttons and `Log` change the chart view.

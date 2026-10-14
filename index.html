@@ -67,6 +67,28 @@
         </label>
       </div>
 
+      <h2>Set the stage <span class="opt">optional</span></h2>
+      <label class="check stage-toggle"><input type="checkbox" name="stage" id="stage-on"> Choose the names and/or the historical period myself</label>
+      <div id="stage" hidden>
+        <div class="grid2">
+          <label>Historical period
+            <select name="period" id="period-mode">
+              <option value="random" selected>Random</option>
+              <option value="date">Session starts on a date I pick</option>
+            </select>
+          </label>
+          <label id="date-wrap" hidden>Session start date
+            <input type="date" name="start" id="start-date">
+          </label>
+        </div>
+        <div class="stage-head">
+          <span id="pick-count"></span>
+          <button type="button" id="pick-clear">Clear names</button>
+        </div>
+        <div id="pick-lists" class="pick-lists"></div>
+        <div class="hint stage-status" id="stage-status"></div>
+      </div>
+
       <h2>Trading costs</h2>
       <div class="grid2">
         <label>Broker model
@@ -97,7 +119,7 @@
 
       <label class="check"><input type="checkbox" name="autopause"> Auto-pause while I type an order</label>
 
-      <button type="submit" class="primary big">Start game</button>
+      <button type="submit" class="primary big" id="btn-start">Start game</button>
       <p class="hint small">Prices are rescaled and dates hidden so you can't recognise the chart by its level.
         Normalized mode shows every chart as % change since its first visible day and you trade dollar amounts,
         so no share price is ever shown.

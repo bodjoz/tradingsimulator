@@ -72,8 +72,112 @@ function syncSetupHints() {
 feeSel.onchange = taxSel.onchange = syncSetupHints;
 syncSetupHints();
 
-$("#setup-form").onsubmit = e => {
+/* ---------- setup: set the stage (pick names and/or period) ---------- */
+const MAX_PICKS = LABELS.length;
+const PICK_GROUPS = [
+  ["Indexes", a => a.kind === "Index"],
+  ["US stocks", a => a.kind === "Stock" && a.region === "USA"],
+  ["International stocks", a => a.kind === "Stock" && a.region !== "USA"],
+];
+const dateToDay = s => Math.round(Date.parse(s + "T00:00:00Z") / 86400000);
+const setupForm = $("#setup-form");
+
+// Local index where a session starting on calendar day `day0` would begin, or -1 if
+// the asset lacks the visible history before it or the session after it.
+function startIndexAt(a, day0, prior, sessionDays) {
+  const i = lowerBound(a.days, day0);
+  return i >= prior && i + sessionDays <= a.px.length && a.days[i] - day0 < 7 ? i : -1;
+}
+// First and last calendar day a session can start on for this asset, or null.
+function startRange(a, prior, sessionDays) {
+  const last = a.px.length - sessionDays;
+  return last >= prior ? [a.days[prior], a.days[last]] : null;
+}
+
+function buildPickLists() {
+  const host = $("#pick-lists");
+  for (const [title, test] of PICK_GROUPS) {
+    const g = el("div", "pick-group", `<h4>${title}</h4>`);
+    for (const a of UNIVERSE.filter(test)) {
+      const lab = el("label");
+      lab.title = `${a.ticker} · ${a.region} · data ${fmtDate(a.days[0])} → ${fmtDate(a.days[a.days.length - 1])}`;
+      lab.innerHTML = `<input type="checkbox" value="${a.ticker}"> ${a.name}<small>${a.region === "USA" ? "" : a.region + " · "}${fmtDate(a.days[0]).slice(0, 4)}</small>`;
+      g.append(lab);
+    }
+    host.append(g);
+  }
+  const all = UNIVERSE.map(a => startRange(a, 0, 1));
+  $("#start-date").min = fmtDate(Math.min(...all.map(r => r[0])));
+  $("#start-date").max = fmtDate(Math.max(...all.map(r => r[1])));
+}
+
+function pickedNames() {
+  return [...document.querySelectorAll("#pick-lists input:checked")].map(i => i.value);
+}
+
+// Reads the stage settings, refreshes the stage UI, and returns { names, startDay, error }.
+function updateStage() {
+  const f = setupForm.elements;
+  const on = f.stage.checked, byDate = f.period.value === "date";
+  const prior = parseInt(f.prior.value), sessionDays = Math.round(parseFloat(f.years.value) * DAYS_PER_YEAR);
+  const names = on ? pickedNames() : [];
+  const startDay = on && byDate && f.start.value ? dateToDay(f.start.value) : null;
+  const assets = names.map(t => UNIVERSE.find(a => a.ticker === t));
+
+  $("#stage").hidden = !on;
+  $("#date-wrap").hidden = !byDate;
+  f.count.disabled = f.pool.disabled = names.length > 0;
+  f.sync.disabled = on && byDate;
+  const full = names.length >= MAX_PICKS;
+  for (const lab of document.querySelectorAll("#pick-lists label")) {
+    const box = $("input", lab), a = UNIVERSE.find(u => u.ticker === box.value);
+    const ok = startDay != null ? startIndexAt(a, startDay, prior, sessionDays) >= 0 : !!startRange(a, prior, sessionDays);
+    lab.classList.toggle("na", !ok);
+    lab.classList.toggle("on", box.checked);
+    box.disabled = full && !box.checked;
+  }
+  $("#pick-count").textContent = !names.length
+    ? "No names picked: charts are drawn at random from the Universe setting."
+    : `${names.length} of max ${MAX_PICKS} picked: you'll get ${names.length} chart${names.length > 1 ? "s" : ""}, shuffled so you don't know which is which.`;
+  $("#pick-clear").hidden = !names.length;
+
+  let error = null, note = "";
+  const rangeTxt = a => { const r = startRange(a, prior, sessionDays); return r ? `${a.name} can start ${fmtDate(r[0])} → ${fmtDate(r[1])}` : `${a.name} has too little history for these settings`; };
+  if (on && byDate && startDay == null) error = "Pick a session start date.";
+  else if (startDay != null && names.length) {
+    const bad = assets.filter(a => startIndexAt(a, startDay, prior, sessionDays) < 0);
+    if (bad.length) error = "Not enough data around that date. " + bad.map(rangeTxt).join("; ") + ".";
+  } else if (startDay != null) {
+    const n = UNIVERSE.filter(a => (f.pool.value === "all" || a.kind === f.pool.value) && startIndexAt(a, startDay, prior, sessionDays) >= 0).length;
+    if (!n) error = "No asset in this Universe has data around that date.";
+    else if (n < parseInt(f.count.value)) note = `Only ${n} asset${n > 1 ? "s" : ""} in this Universe cover that date, so you'll get ${n} chart${n > 1 ? "s" : ""}.`;
+  } else if (names.length) {
+    const bad = assets.filter(a => !startRange(a, prior, sessionDays));
+    if (bad.length) error = bad.map(rangeTxt).join("; ") + ".";
+    else if (f.sync.value === "same") {
+      const lo = Math.max(...assets.map(a => startRange(a, prior, sessionDays)[0]));
+      const hi = Math.min(...assets.map(a => startRange(a, prior, sessionDays)[1]));
+      if (hi < lo) error = "These names' histories don't overlap enough for one shared period. " + assets.map(rangeTxt).join("; ") + ".";
+      else note = `The shared period will start at random between ${fmtDate(lo)} and ${fmtDate(hi)}.`;
+    }
+  }
+  if (on && !error && !note) note = "Greyed-out names lack the data for the current period and session settings.";
+  const st = $("#stage-status");
+  st.textContent = on ? (error || note) : "";
+  st.classList.toggle("err", !!error);
+  $("#btn-start").disabled = !!error;
+  return { names: names.length ? names : null, startDay, error };
+}
+
+if (UNIVERSE.length) buildPickLists();
+setupForm.addEventListener("change", updateStage);
+$("#pick-clear").onclick = () => { document.querySelectorAll("#pick-lists input:checked").forEach(i => { i.checked = false; }); updateStage(); };
+updateStage();
+
+setupForm.onsubmit = e => {
   e.preventDefault();
+  const stage = updateStage();
+  if (stage.error) return;
   const f = new FormData(e.target);
   const num = k => parseFloat(f.get(k)) || 0;
   const fee = feeSel.value === "custom"
@@ -84,11 +188,13 @@ $("#setup-form").onsubmit = e => {
     : TAX_PRESETS[taxSel.value];
   startGame({
     capital: num("capital"),
-    count: parseInt(f.get("count")),
+    count: stage.names ? stage.names.length : parseInt(f.get("count")),
+    names: stage.names,
+    startDay: stage.startDay,
     sessionDays: Math.round(num("years") * DAYS_PER_YEAR),
     prior: parseInt(f.get("prior")),
     pool: f.get("pool"),
-    sync: f.get("sync"),
+    sync: stage.startDay != null ? "same" : f.get("sync"),   // a picked date is one shared period
     normalized: f.get("norm") === "norm",
     fee, tax,
     taxOn: tax.st > 0 || tax.lt > 0,
@@ -105,8 +211,28 @@ function lowerBound(arr, v) {
 
 function pickAssets(cfg) {
   const need = cfg.prior + cfg.sessionDays;
-  const pool = UNIVERSE.filter(a => (cfg.pool === "all" || a.kind === cfg.pool) && a.px.length >= need + 1);
   const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = rand(i + 1); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+  const at = (a, day0) => ({ a, start: startIndexAt(a, day0, cfg.prior, cfg.sessionDays) });
+
+  // A start date picked on the setup screen: every chart begins on it.
+  if (cfg.startDay != null) {
+    const pool = cfg.names ? cfg.names.map(t => UNIVERSE.find(a => a.ticker === t)) : UNIVERSE.filter(a => cfg.pool === "all" || a.kind === cfg.pool);
+    return shuffle(pool.map(a => at(a, cfg.startDay)).filter(p => p.start >= 0)).slice(0, cfg.count);
+  }
+  // Names picked on the setup screen, period random.
+  if (cfg.names) {
+    const chosen = cfg.names.map(t => UNIVERSE.find(a => a.ticker === t));
+    if (cfg.sync !== "same") return shuffle(chosen.map(a => ({ a, start: cfg.prior + rand(a.px.length - need + 1) })));
+    const ranges = chosen.map(a => startRange(a, cfg.prior, cfg.sessionDays));
+    const lo = Math.max(...ranges.map(r => r[0])), hi = Math.min(...ranges.map(r => r[1]));
+    for (let attempt = 0; attempt < 200; attempt++) {
+      const day0 = lo + rand(hi - lo + 1), all = chosen.map(a => at(a, day0));
+      if (all.every(p => p.start >= 0)) return shuffle(all);
+    }
+    return [];
+  }
+
+  const pool = UNIVERSE.filter(a => (cfg.pool === "all" || a.kind === cfg.pool) && a.px.length >= need + 1);
 
   if (cfg.sync === "same") {
     // Choose a calendar date, then keep the assets that have enough data around it.
