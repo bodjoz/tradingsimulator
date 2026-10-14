@@ -59,6 +59,12 @@
             <option value="same">All charts from the same period</option>
           </select>
         </label>
+        <label>Price display
+          <select name="norm">
+            <option value="random" selected>Random price level</option>
+            <option value="norm">Normalized: 100 at start of visible history</option>
+          </select>
+        </label>
       </div>
 
       <h2>Trading costs</h2>
@@ -93,6 +99,8 @@
 
       <button type="submit" class="primary big">Start game</button>
       <p class="hint small">Prices are rescaled and dates hidden so you can't recognise the chart by its level.
+        Normalized mode shows every chart as % change since its first visible day and you trade dollar amounts,
+        so no share price is ever shown.
         One game year = 252 trading days. Keys: <kbd>Space</kbd> pause, <kbd>→</kbd> step one day, <kbd>+</kbd>/<kbd>−</kbd> speed.</p>
     </form>
   </div>

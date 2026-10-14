@@ -6,6 +6,7 @@ Open `index.html` in a browser (no server or install needed).
   (S&P 500, Nasdaq, Nikkei, DAX, Hang Seng…, Apple, GE, Tesla, Citigroup, GameStop…),
   each from a random historical window (or all from the same window, if you choose).
 - Prices are rescaled and dates hidden; you trade at each day's close, paying the bid–ask spread plus broker commission.
+- Optionally, every chart can be normalized to 100 at the start of its visible history (the pre-session period, or the session start when no history is shown), so all charts are on one comparable scale. In this mode prices are shown only as % change, and you trade dollar amounts (fractional shares) instead of share counts.
 - `Space` pauses or resumes, `→` steps one day, `+`/`−` changes speed. The `Full`/`1Y`/`3M` buttons and `Log` change the chart view.
 - Optional capital-gains tax: you can pick short- or long-term rates, an annual allowance and loss carry-forward. Tax is settled every 252 trading days.
 - At the end, open positions are liquidated. You then see which assets and dates you traded and every trade. A table compares your gross and net return, both total and annualized, with:

@@ -41,6 +41,7 @@ const fmt$ = (v, d = 2) => (v < 0 ? "−$" : "$") + Math.abs(v).toLocaleString("
 const fmtPx = v => v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtPct = (v, d = 2) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v * 100).toFixed(d) + "%";
 const fmtInt = v => Math.round(v).toLocaleString("en-US");
+const floorCents = v => Math.floor(v * 100 + 1e-6) / 100;
 const cls = v => (v > 1e-9 ? "up" : v < -1e-9 ? "down" : "");
 const rand = n => Math.floor(Math.random() * n);
 const dayToDate = d => new Date(d * 86400000);
@@ -88,6 +89,7 @@ $("#setup-form").onsubmit = e => {
     prior: parseInt(f.get("prior")),
     pool: f.get("pool"),
     sync: f.get("sync"),
+    normalized: f.get("norm") === "norm",
     fee, tax,
     taxOn: tax.st > 0 || tax.lt > 0,
     autopause: f.get("autopause") === "on",
@@ -134,9 +136,9 @@ function startGame(cfg) {
   const assets = picks.map(({ a, start }, k) => {
     const from = start - cfg.prior, to = start + cfg.sessionDays;   // [from, to)
     const raw = a.px.slice(from, to);
-    // Rescale so the session opens at a random "nice" price — hides the real level.
-    const target = Math.round(15 + Math.random() * Math.random() * 400);
-    const scale = target / raw[cfg.prior];
+    // Rescale to hide the real level: either every chart starts at 100 on its first visible day,
+    // or the session opens at a random "nice" price.
+    const scale = cfg.normalized ? 100 / raw[0] : Math.round(15 + Math.random() * Math.random() * 400) / raw[cfg.prior];
     return {
       k, label: LABELS[k], color: COLORS[k], meta: a,
       days: Array.from(a.days.slice(from, to)),
@@ -186,17 +188,30 @@ function commission(qty, price) {
 const askPx = a => priceAt(a) * (1 + G.cfg.fee.spread / 200);
 const bidPx = a => priceAt(a) * (1 - G.cfg.fee.spread / 200);
 
-function maxBuyQty(a, budget = G.cash) {
-  const ask = askPx(a);
+// Most shares affordable at `ask` within `budget` incl. commission (fractional in normalized mode).
+function maxBuyQty(ask, budget = G.cash) {
+  if (G.cfg.normalized) {
+    let lo = 0, hi = budget / ask;
+    for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (m * ask + commission(m, ask) <= budget + 1e-9) lo = m; else hi = m; }
+    return lo;
+  }
   let q = Math.floor(budget / ask);
   while (q > 0 && q * ask + commission(q, ask) > budget + 1e-9) q--;
   return q;
 }
 
+// Normalized mode trades dollar amounts (fractional shares) so no unit price is ever shown.
+function orderQty(a, side, v) {
+  if (!G.cfg.normalized) return Math.floor(v);
+  if (side === "buy") return v / askPx(a);
+  const q = v / bidPx(a);   // within a cent of the whole holding = sell it all, leaving no dust
+  return a.shares > 0 && Math.abs(a.shares - q) * bidPx(a) < 0.01 ? a.shares : q;
+}
+
 /* ---------- trading ---------- */
 function buy(a, qty) {
-  qty = Math.floor(qty);
-  if (qty <= 0) return "Enter a quantity.";
+  if (!G.cfg.normalized) qty = Math.floor(qty);
+  if (!(qty > 0)) return G.cfg.normalized ? "Enter an amount." : "Enter a quantity.";
   const ask = askPx(a), fee = commission(qty, ask), cost = qty * ask + fee;
   if (cost > G.cash + 1e-9) return `Not enough cash (need ${fmt$(cost)}).`;
   G.cash -= cost; G.feesTotal += fee; a.fees += fee; a.nTrades++;
@@ -209,22 +224,23 @@ function buy(a, qty) {
 }
 
 function sell(a, qty, note) {
-  qty = Math.floor(qty);
-  if (qty <= 0) return "Enter a quantity.";
-  if (qty > a.shares) return `You only hold ${fmtInt(a.shares)} shares.`;
+  if (!G.cfg.normalized) qty = Math.floor(qty);
+  if (!(qty > 0)) return G.cfg.normalized ? "Enter an amount." : "Enter a quantity.";
+  if (qty > a.shares) return G.cfg.normalized ? `You only hold ${fmt$(a.shares * bidPx(a))}.` : `You only hold ${fmtInt(a.shares)} shares.`;
   const bid = bidPx(a), fee = commission(qty, bid), proceeds = qty * bid - fee;
   const netPer = proceeds / qty;
   let left = qty, pnl = 0;
-  while (left > 0) {
+  while (left > 1e-12 && a.lots.length) {
     const lot = a.lots[0], take = Math.min(left, lot.q);
     const gain = take * (netPer - lot.cost);
     if (G.t - lot.t >= DAYS_PER_YEAR) G.yearLT += gain; else G.yearST += gain;
     pnl += gain;
     lot.q -= take; left -= take;
-    if (lot.q === 0) a.lots.shift();
+    if (lot.q <= 1e-12) a.lots.shift();
   }
   G.cash += proceeds; G.feesTotal += fee; a.fees += fee; a.nTrades++;
   a.shares -= qty; a.realized += pnl;
+  if (a.shares <= 1e-12) { a.shares = 0; a.lots = []; }
   a.markers.push({ t: G.t, side: "sell", px: priceAt(a) });
   G.trades.push({ t: G.t, a, side: "SELL", qty, px: bid, mid: priceAt(a), fee, total: proceeds, pnl, note });
   afterTrade();
@@ -309,6 +325,7 @@ function changeSpeed(d) {
 function buildCharts() {
   const host = $("#charts");
   host.innerHTML = "";
+  const N = G.cfg.normalized;
   for (const a of G.assets) {
     const card = el("div", "card");
     card.innerHTML = `
@@ -318,13 +335,13 @@ function buildCharts() {
       </div>
       <canvas></canvas>
       <div class="pos">
-        <div><span>Shares</span><b class="p-sh"></b></div>
-        <div><span>Avg cost</span><b class="p-avg"></b></div>
+        <div><span>${N ? "Cost basis" : "Shares"}</span><b class="p-sh"></b></div>
+        <div><span>${N ? "Position return" : "Avg cost"}</span><b class="p-avg"></b></div>
         <div><span>Value</span><b class="p-val"></b></div>
         <div><span>Unrealized</span><b class="p-unr"></b></div>
       </div>
       <div class="trade">
-        <input type="number" min="0" step="1" placeholder="Quantity (shares)">
+        <input type="number" min="0" step="${N ? "0.01" : "1"}" placeholder="${N ? "Amount ($)" : "Quantity (shares)"}">
         <button class="buy">Buy</button>
         <button class="sell">Sell</button>
       </div>
@@ -347,12 +364,13 @@ function buildCharts() {
     ui.qty.oninput = () => { ui.msg = null; updatePreview(a); };
     ui.qty.onfocus = () => { if (G.cfg.autopause && G.playing) { setPlaying(false); } };
     ui.qty.onkeydown = e => { if (e.key === "Escape") ui.qty.blur(); };
-    $(".buy", card).onclick = () => { ui.msg = buy(a, +ui.qty.value); if (!ui.msg) ui.qty.value = ""; updatePreview(a); };
-    $(".sell", card).onclick = () => { ui.msg = sell(a, +ui.qty.value); if (!ui.msg) ui.qty.value = ""; updatePreview(a); };
+    $(".buy", card).onclick = () => { ui.msg = buy(a, orderQty(a, "buy", +ui.qty.value)); if (!ui.msg) ui.qty.value = ""; updatePreview(a); };
+    $(".sell", card).onclick = () => { ui.msg = sell(a, orderQty(a, "sell", +ui.qty.value)); if (!ui.msg) ui.qty.value = ""; updatePreview(a); };
     for (const b of card.querySelectorAll(".quick button")) {
       b.onclick = () => {
-        const q = b.dataset.q;
-        ui.qty.value = q[0] === "h" ? Math.floor(a.shares * parseFloat(q.slice(1))) : maxBuyQty(a, G.cash * parseFloat(q));
+        const q = b.dataset.q, hold = q[0] === "h", f = parseFloat(hold ? q.slice(1) : q);
+        if (N) ui.qty.value = floorCents(hold ? a.shares * f * bidPx(a) : maxBuyQty(askPx(a), G.cash * f) * askPx(a)).toFixed(2);
+        else ui.qty.value = hold ? Math.floor(a.shares * f) : maxBuyQty(askPx(a), G.cash * f);
         ui.msg = null; updatePreview(a);
       };
     }
@@ -365,6 +383,13 @@ function updatePreview(a) {
   const ui = a.ui, q = Math.floor(+ui.qty.value || 0);
   ui.preview.classList.toggle("err", !!ui.msg);
   if (ui.msg) { ui.preview.textContent = ui.msg; return; }
+  if (G.cfg.normalized) {
+    const v = +ui.qty.value || 0, sp = G.cfg.fee.spread;
+    if (v <= 0) { ui.preview.textContent = sp ? `bid–ask spread ${sp}%` : ""; return; }
+    const fb = commission(v / askPx(a), askPx(a)), fs = commission(v / bidPx(a), bidPx(a));
+    ui.preview.textContent = `Buy costs ${fmt$(v + fb)} (fee ${fmt$(fb)}) · Sell pays ${fmt$(v - fs)} (fee ${fmt$(fs)})`;
+    return;
+  }
   if (q <= 0) { ui.preview.textContent = G.cfg.fee.spread ? `bid ${fmtPx(bidPx(a))} · ask ${fmtPx(askPx(a))}` : ""; return; }
   const ask = askPx(a), bid = bidPx(a), fb = commission(q, ask), fs = commission(q, bid);
   ui.preview.textContent = `Buy ≈ ${fmt$(q * ask + fb)} (fee ${fmt$(fb)}) · Sell ≈ ${fmt$(q * bid - fs)} (fee ${fmt$(fs)})`;
@@ -379,12 +404,18 @@ function updateAll() {
 
   for (const a of G.assets) {
     const p = priceAt(a), p0 = priceAt(a, 0), prev = G.t > 0 ? priceAt(a, G.t - 1) : a.px[c.prior - 1] ?? p;
-    a.ui.price.textContent = fmtPx(p);
+    a.ui.price.textContent = c.normalized ? fmtPct(p / 100 - 1) : fmtPx(p);
     const d = p / prev - 1, s = p / p0 - 1;
     a.ui.chg.innerHTML = `<span class="${cls(d)}">${fmtPct(d)} today</span> · <span class="${cls(s)}">${fmtPct(s)} since start</span>`;
     const cost = a.lots.reduce((s, l) => s + l.q * l.cost, 0);
-    a.ui.sh.textContent = fmtInt(a.shares);
-    a.ui.avg.textContent = a.shares ? fmtPx(cost / a.shares) : "—";
+    if (c.normalized) {
+      const r = a.shares ? a.shares * p / cost - 1 : 0;
+      a.ui.sh.textContent = a.shares ? fmt$(cost, 0) : "—";
+      a.ui.avg.innerHTML = a.shares ? `<span class="${cls(r)}">${fmtPct(r)}</span>` : "—";
+    } else {
+      a.ui.sh.textContent = fmtInt(a.shares);
+      a.ui.avg.textContent = a.shares ? fmtPx(cost / a.shares) : "—";
+    }
     a.ui.val.textContent = a.shares ? fmt$(a.shares * p, 0) : "—";
     const unr = a.shares * p - cost;
     a.ui.unr.innerHTML = a.shares ? `<span class="${cls(unr)}">${fmt$(unr, 0)}</span>` : "—";
@@ -421,7 +452,8 @@ function renderLog() {
   ol.innerHTML = G.trades.slice().reverse().map(tr => {
     if (tr.side === "TAX") return `<li><span class="d">D${tr.t + 1}</span><span style="color:var(--warn)">${tr.note}</span><span class="r">${tr.total ? fmt$(tr.total) : ""}</span></li>`;
     const pnl = tr.pnl == null ? "" : ` <span class="${cls(tr.pnl)}">${fmt$(tr.pnl, 0)}</span>`;
-    return `<li><span class="d">D${tr.t + 1}</span><span><b class="${tr.side === "BUY" ? "up" : "down"}">${tr.side}</b> ${fmtInt(tr.qty)} ${tr.a.label} @ ${fmtPx(tr.px)}${pnl}</span><span class="r">${fmt$(tr.total, 0)}</span></li>`;
+    const what = G.cfg.normalized ? `${fmt$(tr.qty * tr.px, 0)} of ${tr.a.label}` : `${fmtInt(tr.qty)} ${tr.a.label} @ ${fmtPx(tr.px)}`;
+    return `<li><span class="d">D${tr.t + 1}</span><span><b class="${tr.side === "BUY" ? "up" : "down"}">${tr.side}</b> ${what}${pnl}</span><span class="r">${fmt$(tr.total, 0)}</span></li>`;
   }).join("");
 }
 
@@ -474,14 +506,19 @@ function drawChart(a, opts = {}) {
   // grid + price axis
   ctx.font = "11px ui-monospace, Menlo, monospace";
   ctx.textBaseline = "middle";
-  const ticks = useLog
-    ? niceTicks(Math.exp(tlo), Math.exp(thi), 5)
-    : niceTicks(tlo, thi, 5);
-  for (const v of ticks) {
+  // normalized mode labels the axis in % change since the first visible day (= 100)
+  const N = c.normalized;
+  const [alo, ahi] = useLog ? [Math.exp(tlo), Math.exp(thi)] : [tlo, thi];
+  const ticks = N ? niceTicks(alo / 100 - 1, ahi / 100 - 1, 5) : niceTicks(alo, ahi, 5);
+  for (const u of ticks) {
+    const v = N ? 100 * (1 + u) : u;
     const y = Y(v); if (y < T || y > h - B) continue;
     ctx.strokeStyle = "rgba(139,152,168,.12)"; ctx.beginPath(); ctx.moveTo(L, y); ctx.lineTo(w - R, y); ctx.stroke();
-    ctx.fillStyle = "#6b7685"; ctx.fillText(v >= 1000 ? fmtInt(v) : +v.toPrecision(4) + "", w - R + 6, y);
+    const r = Math.round(u * 1e6) / 1e6;
+    const txt = N ? (r > 0 ? "+" : "") + +(r * 100).toPrecision(4) + "%" : v >= 1000 ? fmtInt(v) : +v.toPrecision(4) + "";
+    ctx.fillStyle = "#6b7685"; ctx.fillText(txt, w - R + 6, y);
   }
+  const fmtV = v => N ? fmtPct(v / 100 - 1, 1) : fmtPx(v);
 
   // date axis on reveal
   if (opts.reveal) {
@@ -551,7 +588,7 @@ function drawChart(a, opts = {}) {
     ctx.beginPath(); ctx.arc(X(lastIdx), y, 3, 0, Math.PI * 2); ctx.fill();
     ctx.fillRect(w - R + 2, y - 9, R - 2, 18);
     ctx.fillStyle = "#04121f"; ctx.font = "bold 11px ui-monospace, Menlo, monospace";
-    ctx.fillText(fmtPx(v), w - R + 6, y);
+    ctx.fillText(fmtV(v), w - R + 6, y);
   }
 
   // hover crosshair
@@ -563,7 +600,7 @@ function drawChart(a, opts = {}) {
       ctx.strokeStyle = "rgba(230,237,243,.25)";
       ctx.beginPath(); ctx.moveTo(x, T); ctx.lineTo(x, h - B); ctx.moveTo(L, y); ctx.lineTo(w - R, y); ctx.stroke();
       const rel = i - P;
-      const label = (opts.reveal ? fmtDate(a.days[i]) : `Day ${rel >= 0 ? rel + 1 : rel}`) + `  ${fmtPx(v)}`;
+      const label = (opts.reveal ? fmtDate(a.days[i]) : `Day ${rel >= 0 ? rel + 1 : rel}`) + `  ${fmtV(v)}`;
       ctx.font = "11px ui-monospace, Menlo, monospace";
       const tw = ctx.measureText(label).width + 10;
       const bx = Math.min(Math.max(L, x - tw / 2), w - R - tw);
@@ -649,8 +686,7 @@ function buyAndHold(legs) {
   for (const { p0, p1, budget } of legs) {
     gross += budget * p1 / p0;
     const ask = p0 * (1 + half);
-    let q = Math.floor(budget / ask);
-    while (q > 0 && q * ask + commission(q, ask) > budget) q--;
+    const q = maxBuyQty(ask, budget);
     if (q <= 0) { net += budget; continue; }
     const cost = q * ask + commission(q, ask);
     const bid = p1 * (1 - half), proceeds = q * bid - commission(q, bid);
@@ -800,7 +836,7 @@ function showReveal() {
       <td>${tr.t + 1}</td><td>${fmtDate(a.days[c.prior + tr.t])}</td>
       <td><span class="dot" style="display:inline-block;background:${a.color}"></span> ${a.label} · ${a.meta.name}</td>
       <td class="${tr.side === "BUY" ? "up" : "down"}">${tr.side}${tr.note ? ` <span class="muted">(${tr.note})</span>` : ""}</td>
-      <td class="n">${fmtInt(tr.qty)}</td><td class="n">${fmtPx(tr.px)}</td>
+      <td class="n">${c.normalized ? tr.qty.toFixed(3) : fmtInt(tr.qty)}</td><td class="n">${fmtPx(tr.px)}</td>
       <td class="n">${fmtReal(tr.px / a.scale)}</td>
       <td class="n">${fmt$(tr.fee)}</td>
       <td class="n ${tr.pnl == null ? "" : cls(tr.pnl)}">${tr.pnl == null ? "" : fmt$(tr.pnl)}</td>
