@@ -1,0 +1,233 @@
+ticker,name,type,group,sector,region,currency
+^GSPC,S&P 500,index,Broad index (developed),,USA,USD
+^DJI,Dow Jones Industrial Average,index,Broad index (developed),,USA,USD
+^IXIC,Nasdaq Composite,index,Broad index (developed),,USA,USD
+^NYA,NYSE Composite,index,Broad index (developed),,USA,USD
+^RUT,Russell 2000,index,Small/mid-cap index,,USA,USD
+^SP600,S&P SmallCap 600,index,Small/mid-cap index,,USA,USD
+^SP400,S&P MidCap 400,index,Small/mid-cap index,,USA,USD
+^GSPTSE,S&P/TSX Composite,index,Broad index (developed),,Canada,CAD
+^N225,Nikkei 225,index,Broad index (developed),,Japan,JPY
+^FTSE,FTSE 100,index,Broad index (developed),,UK,GBP
+^GDAXI,DAX,index,Broad index (developed),,Germany,EUR
+^FCHI,CAC 40,index,Broad index (developed),,France,EUR
+^STOXX50E,Euro Stoxx 50,index,Broad index (developed),,Eurozone,EUR
+^AEX,AEX,index,Broad index (developed),,Netherlands,EUR
+^SSMI,SMI,index,Broad index (developed),,Switzerland,CHF
+^IBEX,IBEX 35,index,Broad index (developed),,Spain,EUR
+^AXJO,S&P/ASX 200,index,Broad index (developed),,Australia,AUD
+^HSI,Hang Seng,index,Broad index (developed),,Hong Kong,HKD
+^STI,Straits Times,index,Broad index (developed),,Singapore,SGD
+^NZ50,NZX 50,index,Broad index (developed),,New Zealand,NZD
+^BVSP,Bovespa,index,Emerging-market index,,Brazil,BRL
+^BSESN,BSE Sensex,index,Emerging-market index,,India,INR
+^KS11,KOSPI,index,Emerging-market index,,South Korea,KRW
+000001.SS,Shanghai Composite,index,Emerging-market index,,China,CNY
+^TWII,Taiwan Weighted,index,Emerging-market index,,Taiwan,TWD
+^JKSE,Jakarta Composite,index,Emerging-market index,,Indonesia,IDR
+^MXX,IPC Mexico,index,Emerging-market index,,Mexico,MXN
+^KLSE,FTSE Bursa Malaysia KLCI,index,Emerging-market index,,Malaysia,MYR
+^MERV,Merval,index,Emerging-market index,,Argentina,ARS
+XLK,Technology Select Sector SPDR,etf,Sector index (US),Tech,USA,USD
+XLF,Financial Select Sector SPDR,etf,Sector index (US),Financials,USA,USD
+XLE,Energy Select Sector SPDR,etf,Sector index (US),Energy,USA,USD
+XLU,Utilities Select Sector SPDR,etf,Sector index (US),Utilities,USA,USD
+XLP,Consumer Staples Select Sector SPDR,etf,Sector index (US),Staples,USA,USD
+XLV,Health Care Select Sector SPDR,etf,Sector index (US),Health,USA,USD
+XLI,Industrial Select Sector SPDR,etf,Sector index (US),Industrials,USA,USD
+XLB,Materials Select Sector SPDR,etf,Sector index (US),Materials,USA,USD
+XLY,Consumer Discretionary Select Sector SPDR,etf,Sector index (US),Discretionary,USA,USD
+KBE,SPDR S&P Bank,etf,Industry index (US),Financials,USA,USD
+XBI,SPDR S&P Biotech (equal-wt),etf,Industry index (US),Health,USA,USD
+IBB,iShares Biotechnology,etf,Industry index (US),Health,USA,USD
+SMH,VanEck Semiconductor,etf,Industry index (US),Tech,USA,USD
+XOP,SPDR S&P Oil & Gas E&P,etf,Industry index (US),Energy,USA,USD
+GDX,VanEck Gold Miners,etf,Industry index (US),Materials,USA,USD
+ITB,iShares US Home Construction,etf,Industry index (US),Discretionary,USA,USD
+JETS,US Global Jets (airlines),etf,Industry index (US),Industrials,USA,USD
+EEM,iShares MSCI Emerging Markets,etf,EM index in USD (ETF),,Emerging,USD
+EWZ,iShares MSCI Brazil,etf,EM index in USD (ETF),,Emerging,USD
+EWY,iShares MSCI South Korea,etf,EM index in USD (ETF),,Emerging,USD
+EWT,iShares MSCI Taiwan,etf,EM index in USD (ETF),,Emerging,USD
+EWW,iShares MSCI Mexico,etf,EM index in USD (ETF),,Emerging,USD
+EZA,iShares MSCI South Africa,etf,EM index in USD (ETF),,Emerging,USD
+FXI,iShares China Large-Cap,etf,EM index in USD (ETF),,Emerging,USD
+TUR,iShares MSCI Turkey,etf,EM index in USD (ETF),,Emerging,USD
+EWJ,iShares MSCI Japan,etf,Developed index in USD (ETF),,International,USD
+EWU,iShares MSCI UK,etf,Developed index in USD (ETF),,International,USD
+EWG,iShares MSCI Germany,etf,Developed index in USD (ETF),,International,USD
+RSP,Invesco S&P 500 Equal Weight,etf,Equal-weighted index,,USA,USD
+SSO,ProShares Ultra S&P 500 (2x),etf,Leveraged/inverse,,USA,USD
+TQQQ,ProShares UltraPro QQQ (3x),etf,Leveraged/inverse,,USA,USD
+SQQQ,ProShares UltraPro Short QQQ (-3x),etf,Leveraged/inverse,,USA,USD
+AAPL,Apple,stock,Large-cap stock (US),Tech,USA,USD
+MSFT,Microsoft,stock,Large-cap stock (US),Tech,USA,USD
+NVDA,Nvidia,stock,Large-cap stock (US),Tech,USA,USD
+INTC,Intel,stock,Large-cap stock (US),Tech,USA,USD
+CSCO,Cisco,stock,Large-cap stock (US),Tech,USA,USD
+ORCL,Oracle,stock,Large-cap stock (US),Tech,USA,USD
+AMD,AMD,stock,Large-cap stock (US),Tech,USA,USD
+IBM,IBM,stock,Large-cap stock (US),Tech,USA,USD
+TXN,Texas Instruments,stock,Large-cap stock (US),Tech,USA,USD
+AMZN,Amazon,stock,Large-cap stock (US),Discretionary,USA,USD
+TSLA,Tesla,stock,Large-cap stock (US),Discretionary,USA,USD
+HD,Home Depot,stock,Large-cap stock (US),Discretionary,USA,USD
+MCD,McDonald's,stock,Large-cap stock (US),Discretionary,USA,USD
+NKE,Nike,stock,Large-cap stock (US),Discretionary,USA,USD
+SBUX,Starbucks,stock,Large-cap stock (US),Discretionary,USA,USD
+F,Ford,stock,Large-cap stock (US),Discretionary,USA,USD
+GOOGL,Alphabet,stock,Large-cap stock (US),Communication,USA,USD
+META,Meta,stock,Large-cap stock (US),Communication,USA,USD
+NFLX,Netflix,stock,Large-cap stock (US),Communication,USA,USD
+DIS,Disney,stock,Large-cap stock (US),Communication,USA,USD
+T,AT&T,stock,Large-cap stock (US),Communication,USA,USD
+VZ,Verizon,stock,Large-cap stock (US),Communication,USA,USD
+JPM,JPMorgan Chase,stock,Large-cap stock (US),Financials,USA,USD
+BAC,Bank of America,stock,Large-cap stock (US),Financials,USA,USD
+C,Citigroup,stock,Large-cap stock (US),Financials,USA,USD
+WFC,Wells Fargo,stock,Large-cap stock (US),Financials,USA,USD
+GS,Goldman Sachs,stock,Large-cap stock (US),Financials,USA,USD
+MS,Morgan Stanley,stock,Large-cap stock (US),Financials,USA,USD
+USB,U.S. Bancorp,stock,Large-cap stock (US),Financials,USA,USD
+AIG,AIG,stock,Large-cap stock (US),Financials,USA,USD
+BRK-A,Berkshire Hathaway,stock,Large-cap stock (US),Financials,USA,USD
+XOM,ExxonMobil,stock,Large-cap stock (US),Energy,USA,USD
+CVX,Chevron,stock,Large-cap stock (US),Energy,USA,USD
+COP,ConocoPhillips,stock,Large-cap stock (US),Energy,USA,USD
+OXY,Occidental,stock,Large-cap stock (US),Energy,USA,USD
+APA,APA Corp,stock,Large-cap stock (US),Energy,USA,USD
+DVN,Devon Energy,stock,Large-cap stock (US),Energy,USA,USD
+SLB,Schlumberger,stock,Large-cap stock (US),Energy,USA,USD
+HAL,Halliburton,stock,Large-cap stock (US),Energy,USA,USD
+NEE,NextEra Energy,stock,Large-cap stock (US),Utilities,USA,USD
+DUK,Duke Energy,stock,Large-cap stock (US),Utilities,USA,USD
+SO,Southern Co,stock,Large-cap stock (US),Utilities,USA,USD
+D,Dominion Energy,stock,Large-cap stock (US),Utilities,USA,USD
+ED,Consolidated Edison,stock,Large-cap stock (US),Utilities,USA,USD
+AEP,American Electric Power,stock,Large-cap stock (US),Utilities,USA,USD
+KO,Coca-Cola,stock,Large-cap stock (US),Staples,USA,USD
+PEP,PepsiCo,stock,Large-cap stock (US),Staples,USA,USD
+PG,Procter & Gamble,stock,Large-cap stock (US),Staples,USA,USD
+WMT,Walmart,stock,Large-cap stock (US),Staples,USA,USD
+CL,Colgate-Palmolive,stock,Large-cap stock (US),Staples,USA,USD
+GIS,General Mills,stock,Large-cap stock (US),Staples,USA,USD
+MO,Altria,stock,Large-cap stock (US),Staples,USA,USD
+KMB,Kimberly-Clark,stock,Large-cap stock (US),Staples,USA,USD
+JNJ,Johnson & Johnson,stock,Large-cap stock (US),Health,USA,USD
+PFE,Pfizer,stock,Large-cap stock (US),Health,USA,USD
+MRK,Merck,stock,Large-cap stock (US),Health,USA,USD
+AMGN,Amgen,stock,Large-cap stock (US),Health,USA,USD
+GILD,Gilead,stock,Large-cap stock (US),Health,USA,USD
+BIIB,Biogen,stock,Large-cap stock (US),Health,USA,USD
+REGN,Regeneron,stock,Large-cap stock (US),Health,USA,USD
+VRTX,Vertex,stock,Large-cap stock (US),Health,USA,USD
+GE,General Electric,stock,Large-cap stock (US),Industrials,USA,USD
+BA,Boeing,stock,Large-cap stock (US),Industrials,USA,USD
+CAT,Caterpillar,stock,Large-cap stock (US),Industrials,USA,USD
+MMM,3M,stock,Large-cap stock (US),Industrials,USA,USD
+HON,Honeywell,stock,Large-cap stock (US),Industrials,USA,USD
+UNP,Union Pacific,stock,Large-cap stock (US),Industrials,USA,USD
+FCX,Freeport-McMoRan,stock,Large-cap stock (US),Materials,USA,USD
+NEM,Newmont,stock,Large-cap stock (US),Materials,USA,USD
+AA,Alcoa,stock,Large-cap stock (US),Materials,USA,USD
+DD,DuPont,stock,Large-cap stock (US),Materials,USA,USD
+NUE,Nucor,stock,Large-cap stock (US),Materials,USA,USD
+DAL,Delta Air Lines,stock,Airline/travel stock (US),Industrials,USA,USD
+UAL,United Airlines,stock,Airline/travel stock (US),Industrials,USA,USD
+AAL,American Airlines,stock,Airline/travel stock (US),Industrials,USA,USD
+LUV,Southwest Airlines,stock,Airline/travel stock (US),Industrials,USA,USD
+CCL,Carnival,stock,Airline/travel stock (US),Discretionary,USA,USD
+RCL,Royal Caribbean,stock,Airline/travel stock (US),Discretionary,USA,USD
+MAR,Marriott,stock,Airline/travel stock (US),Discretionary,USA,USD
+EXPE,Expedia,stock,Airline/travel stock (US),Discretionary,USA,USD
+SRPT,Sarepta,stock,Small-cap biotech stock (US),Health,USA,USD
+NVAX,Novavax,stock,Small-cap biotech stock (US),Health,USA,USD
+ALNY,Alnylam,stock,Small-cap biotech stock (US),Health,USA,USD
+INCY,Incyte,stock,Small-cap biotech stock (US),Health,USA,USD
+EXEL,Exelixis,stock,Small-cap biotech stock (US),Health,USA,USD
+IONS,Ionis,stock,Small-cap biotech stock (US),Health,USA,USD
+ACAD,Acadia Pharmaceuticals,stock,Small-cap biotech stock (US),Health,USA,USD
+ARWR,Arrowhead,stock,Small-cap biotech stock (US),Health,USA,USD
+VNDA,Vanda,stock,Small-cap biotech stock (US),Health,USA,USD
+OPK,OPKO Health,stock,Small-cap biotech stock (US),Health,USA,USD
+NKTR,Nektar,stock,Small-cap biotech stock (US),Health,USA,USD
+BDL,Flanigan's,stock,Small/micro-cap stock (US),Discretionary,USA,USD
+MAYS,J.W. Mays,stock,Small/micro-cap stock (US),Financials,USA,USD
+ESP,Espey Mfg,stock,Small/micro-cap stock (US),Industrials,USA,USD
+CKX,CKX Lands,stock,Small/micro-cap stock (US),Energy,USA,USD
+SIEB,Siebert Financial,stock,Small/micro-cap stock (US),Financials,USA,USD
+LWAY,Lifeway Foods,stock,Small/micro-cap stock (US),Staples,USA,USD
+DJCO,Daily Journal,stock,Small/micro-cap stock (US),Communication,USA,USD
+NATH,Nathan's Famous,stock,Small/micro-cap stock (US),Discretionary,USA,USD
+UTMD,Utah Medical,stock,Small/micro-cap stock (US),Health,USA,USD
+CRMT,America's Car-Mart,stock,Small/micro-cap stock (US),Discretionary,USA,USD
+SMID,Smith-Midland,stock,Small/micro-cap stock (US),Materials,USA,USD
+CVR,Chicago Rivet & Machine,stock,Small/micro-cap stock (US),Industrials,USA,USD
+BP.L,BP,stock,Large-cap stock (UK),Energy,UK,GBp
+SHEL.L,Shell,stock,Large-cap stock (UK),Energy,UK,GBp
+HSBA.L,HSBC,stock,Large-cap stock (UK),Financials,UK,GBp
+BARC.L,Barclays,stock,Large-cap stock (UK),Financials,UK,GBp
+LLOY.L,Lloyds,stock,Large-cap stock (UK),Financials,UK,GBp
+ULVR.L,Unilever,stock,Large-cap stock (UK),Staples,UK,GBp
+TSCO.L,Tesco,stock,Large-cap stock (UK),Staples,UK,GBp
+GSK.L,GSK,stock,Large-cap stock (UK),Health,UK,GBp
+AZN.L,AstraZeneca,stock,Large-cap stock (UK),Health,UK,GBp
+RIO.L,Rio Tinto,stock,Large-cap stock (UK),Materials,UK,GBp
+VOD.L,Vodafone,stock,Large-cap stock (UK),Communication,UK,GBp
+BATS.L,British American Tobacco,stock,Large-cap stock (UK),Staples,UK,GBp
+BHP.AX,BHP,stock,Large-cap stock (Australia),Materials,Australia,AUD
+CBA.AX,Commonwealth Bank,stock,Large-cap stock (Australia),Financials,Australia,AUD
+WBC.AX,Westpac,stock,Large-cap stock (Australia),Financials,Australia,AUD
+NAB.AX,National Australia Bank,stock,Large-cap stock (Australia),Financials,Australia,AUD
+ANZ.AX,ANZ,stock,Large-cap stock (Australia),Financials,Australia,AUD
+CSL.AX,CSL,stock,Large-cap stock (Australia),Health,Australia,AUD
+WES.AX,Wesfarmers,stock,Large-cap stock (Australia),Discretionary,Australia,AUD
+WOW.AX,Woolworths,stock,Large-cap stock (Australia),Staples,Australia,AUD
+TLS.AX,Telstra,stock,Large-cap stock (Australia),Communication,Australia,AUD
+WDS.AX,Woodside,stock,Large-cap stock (Australia),Energy,Australia,AUD
+SIE.DE,Siemens,stock,Large-cap stock (Europe),Industrials,Europe,EUR
+ALV.DE,Allianz,stock,Large-cap stock (Europe),Financials,Europe,EUR
+BAS.DE,BASF,stock,Large-cap stock (Europe),Materials,Europe,EUR
+SAP.DE,SAP,stock,Large-cap stock (Europe),Tech,Europe,EUR
+MC.PA,LVMH,stock,Large-cap stock (Europe),Discretionary,Europe,EUR
+TTE.PA,TotalEnergies,stock,Large-cap stock (Europe),Energy,Europe,EUR
+SAN.PA,Sanofi,stock,Large-cap stock (Europe),Health,Europe,EUR
+NESN.SW,Nestle,stock,Large-cap stock (Europe),Staples,Europe,EUR
+NOVN.SW,Novartis,stock,Large-cap stock (Europe),Health,Europe,EUR
+ASML.AS,ASML,stock,Large-cap stock (Europe),Tech,Europe,EUR
+7203.T,Toyota,stock,Large-cap stock (Japan),Discretionary,Japan,JPY
+6758.T,Sony,stock,Large-cap stock (Japan),Tech,Japan,JPY
+8306.T,Mitsubishi UFJ,stock,Large-cap stock (Japan),Financials,Japan,JPY
+9984.T,SoftBank Group,stock,Large-cap stock (Japan),Communication,Japan,JPY
+6501.T,Hitachi,stock,Large-cap stock (Japan),Industrials,Japan,JPY
+600519.SS,Kweichow Moutai,stock,China A-share stock,Staples,China,CNY
+601398.SS,ICBC,stock,China A-share stock,Financials,China,CNY
+600036.SS,China Merchants Bank,stock,China A-share stock,Financials,China,CNY
+600028.SS,Sinopec,stock,China A-share stock,Energy,China,CNY
+000858.SZ,Wuliangye,stock,China A-share stock,Staples,China,CNY
+000002.SZ,China Vanke,stock,China A-share stock,Financials,China,CNY
+600104.SS,SAIC Motor,stock,China A-share stock,Discretionary,China,CNY
+000651.SZ,Gree Electric,stock,China A-share stock,Discretionary,China,CNY
+NOK,Nokia,stock,ADR / foreign stock (US-listed),Tech,International,USD
+SONY,Sony ADR,stock,ADR / foreign stock (US-listed),Tech,International,USD
+TM,Toyota ADR,stock,ADR / foreign stock (US-listed),Discretionary,International,USD
+TSM,TSMC,stock,ADR / foreign stock (US-listed),Tech,International,USD
+BABA,Alibaba,stock,ADR / foreign stock (US-listed),Discretionary,International,USD
+VALE,Vale,stock,ADR / foreign stock (US-listed),Materials,International,USD
+GME,GameStop,stock,ADR / foreign stock (US-listed),Discretionary,International,USD
+SAP,SAP ADR,stock,ADR / foreign stock (US-listed),Tech,International,USD
+ASML,ASML (Nasdaq),stock,ADR / foreign stock (US-listed),Tech,International,USD
+BTC-USD,Bitcoin,crypto,Crypto,,Global,USD
+ETH-USD,Ether,crypto,Crypto,,Global,USD
+CL=F,WTI crude oil (front month),factor,Factor,,Global,USD
+GC=F,Gold (front month),factor,Factor,,Global,USD
+HG=F,Copper (front month),factor,Factor,,Global,USD
+^TNX,US 10-year Treasury yield,factor,Factor,,Global,USD
+^IRX,US 13-week T-bill yield,factor,Factor,,Global,USD
+DX-Y.NYB,US Dollar Index,factor,Factor,,Global,USD
+TLT,iShares 20+ Year Treasury,factor,Factor,,Global,USD
+LQD,iShares IG Corporate Bond,factor,Factor,,Global,USD
+HYG,iShares High Yield Corporate Bond,factor,Factor,,Global,USD
+^VIX,CBOE VIX,factor,Factor,,Global,USD
+EURUSD=X,EUR/USD,factor,Factor,,Global,USD
+JPY=X,USD/JPY,factor,Factor,,Global,USD

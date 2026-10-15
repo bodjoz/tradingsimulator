@@ -65,11 +65,16 @@ label.check.inline { margin: 0; }
 label.check.stage-toggle { margin: 0 0 12px; }
 .stage-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 14px 0 8px; font-size: 13px; }
 .stage-head button { padding: 3px 10px; font-size: 12px; }
+.stage-head #pick-count { flex: 1; }
+.stage-head #pick-search { width: 230px; padding: 4px 8px; font-size: 12.5px; }
 .pick-lists {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 16px; max-height: 340px; overflow: auto;
+  column-count: 3; column-gap: 16px; max-height: 380px; overflow: auto;
   border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); padding: 10px 12px;
 }
-.pick-group h4 { margin: 4px 0 6px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.pick-group[hidden], .pick-group label[hidden] { display: none; }
+.pick-group h4 { break-after: avoid; }
+.pick-group label { break-inside: avoid; }
+.pick-group h4 { margin: 10px 0 6px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
 .pick-group label { flex-direction: row; align-items: center; gap: 7px; padding: 2px 0; font-size: 13px; color: var(--text); cursor: pointer; }
 .pick-group label input { width: auto; margin: 0; }
 .pick-group label small { margin-left: auto; color: var(--muted); font-family: var(--mono); font-size: 11px; }
@@ -81,7 +86,9 @@ select:disabled, input:disabled { opacity: .5; }
 @media (max-width: 640px) {
   .grid2 { grid-template-columns: 1fr; }
   .grid4 { grid-template-columns: 1fr 1fr; }
-  .pick-lists { grid-template-columns: 1fr; }
+  .pick-lists { column-count: 1; }
+  .stage-head { flex-wrap: wrap; }
+  .stage-head #pick-search { width: 100%; order: 3; }
 }
 
 /* ---------- game ---------- */

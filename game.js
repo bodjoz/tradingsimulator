@@ -53,8 +53,21 @@ const UNIVERSE = (window.MARKET_DATA || []).map(a => {
   const days = new Int32Array(a.d.length);
   let acc = 0;
   for (let i = 0; i < a.d.length; i++) { acc += a.d[i]; days[i] = acc; }
-  return { ticker: a.ticker, name: a.name, kind: a.kind, region: a.region, days, px: a.p };
+  return { ticker: a.ticker, name: a.name, kind: a.kind, region: a.region, group: a.group || a.kind,
+           sector: a.sector || "", currency: a.currency || "", days, px: a.p };
 });
+// The Universe setting on the setup screen.
+const POOLS = {
+  all: () => true,
+  classic: a => a.kind === "Index" || a.kind === "Stock",
+  Index: a => a.kind === "Index",
+  funds: a => a.kind === "Index" || a.kind === "ETF",
+  Stock: a => a.kind === "Stock",
+  usstock: a => a.kind === "Stock" && a.region === "USA",
+  intlstock: a => a.kind === "Stock" && a.region !== "USA",
+  alt: a => a.kind === "Crypto" || a.kind === "Macro",
+};
+const inPool = (a, pool) => (POOLS[pool] || POOLS.all)(a);
 
 /* ---------- setup screen ---------- */
 function fillSelect(sel, presets, def) {
@@ -74,11 +87,7 @@ syncSetupHints();
 
 /* ---------- setup: set the stage (pick names and/or period) ---------- */
 const MAX_PICKS = LABELS.length;
-const PICK_GROUPS = [
-  ["Indexes", a => a.kind === "Index"],
-  ["US stocks", a => a.kind === "Stock" && a.region === "USA"],
-  ["International stocks", a => a.kind === "Stock" && a.region !== "USA"],
-];
+const PICK_GROUPS = [...new Set(UNIVERSE.map(a => a.group))];   // data.js lists assets in display order
 const dateToDay = s => Math.round(Date.parse(s + "T00:00:00Z") / 86400000);
 const setupForm = $("#setup-form");
 
@@ -96,11 +105,12 @@ function startRange(a, prior, sessionDays) {
 
 function buildPickLists() {
   const host = $("#pick-lists");
-  for (const [title, test] of PICK_GROUPS) {
+  for (const title of PICK_GROUPS) {
     const g = el("div", "pick-group", `<h4>${title}</h4>`);
-    for (const a of UNIVERSE.filter(test)) {
+    for (const a of UNIVERSE.filter(u => u.group === title).sort((x, y) => x.name.localeCompare(y.name))) {
       const lab = el("label");
-      lab.title = `${a.ticker} · ${a.region} · data ${fmtDate(a.days[0])} → ${fmtDate(a.days[a.days.length - 1])}`;
+      lab.title = [a.ticker, a.sector, a.region, `data ${fmtDate(a.days[0])} → ${fmtDate(a.days[a.days.length - 1])}`].filter(Boolean).join(" · ");
+      lab.dataset.search = [a.name, a.ticker, a.sector, a.region, a.group].join(" ").toLowerCase();
       lab.innerHTML = `<input type="checkbox" value="${a.ticker}"> ${a.name}<small>${a.region === "USA" ? "" : a.region + " · "}${fmtDate(a.days[0]).slice(0, 4)}</small>`;
       g.append(lab);
     }
@@ -109,6 +119,20 @@ function buildPickLists() {
   const all = UNIVERSE.map(a => startRange(a, 0, 1));
   $("#start-date").min = fmtDate(Math.min(...all.map(r => r[0])));
   $("#start-date").max = fmtDate(Math.max(...all.map(r => r[1])));
+}
+
+// Hides names that don't match the search box (picked names always stay visible).
+function filterPicks() {
+  const words = $("#pick-search").value.toLowerCase().split(/\s+/).filter(Boolean);
+  for (const g of document.querySelectorAll("#pick-lists .pick-group")) {
+    let shown = 0;
+    for (const lab of g.querySelectorAll("label")) {
+      const hit = $("input", lab).checked || words.every(w => lab.dataset.search.includes(w));
+      lab.hidden = !hit;
+      shown += hit;
+    }
+    g.hidden = !shown;
+  }
 }
 
 function pickedNames() {
@@ -148,7 +172,7 @@ function updateStage() {
     const bad = assets.filter(a => startIndexAt(a, startDay, prior, sessionDays) < 0);
     if (bad.length) error = "Not enough data around that date. " + bad.map(rangeTxt).join("; ") + ".";
   } else if (startDay != null) {
-    const n = UNIVERSE.filter(a => (f.pool.value === "all" || a.kind === f.pool.value) && startIndexAt(a, startDay, prior, sessionDays) >= 0).length;
+    const n = UNIVERSE.filter(a => inPool(a, f.pool.value) && startIndexAt(a, startDay, prior, sessionDays) >= 0).length;
     if (!n) error = "No asset in this Universe has data around that date.";
     else if (n < parseInt(f.count.value)) note = `Only ${n} asset${n > 1 ? "s" : ""} in this Universe cover that date, so you'll get ${n} chart${n > 1 ? "s" : ""}.`;
   } else if (names.length) {
@@ -171,7 +195,9 @@ function updateStage() {
 
 if (UNIVERSE.length) buildPickLists();
 setupForm.addEventListener("change", updateStage);
-$("#pick-clear").onclick = () => { document.querySelectorAll("#pick-lists input:checked").forEach(i => { i.checked = false; }); updateStage(); };
+$("#pick-clear").onclick = () => { document.querySelectorAll("#pick-lists input:checked").forEach(i => { i.checked = false; }); updateStage(); filterPicks(); };
+$("#pick-search").oninput = filterPicks;
+$("#pick-search").onkeydown = e => { if (e.key === "Enter") e.preventDefault(); };
 updateStage();
 
 setupForm.onsubmit = e => {
@@ -216,7 +242,7 @@ function pickAssets(cfg) {
 
   // A start date picked on the setup screen: every chart begins on it.
   if (cfg.startDay != null) {
-    const pool = cfg.names ? cfg.names.map(t => UNIVERSE.find(a => a.ticker === t)) : UNIVERSE.filter(a => cfg.pool === "all" || a.kind === cfg.pool);
+    const pool = cfg.names ? cfg.names.map(t => UNIVERSE.find(a => a.ticker === t)) : UNIVERSE.filter(a => inPool(a, cfg.pool));
     return shuffle(pool.map(a => at(a, cfg.startDay)).filter(p => p.start >= 0)).slice(0, cfg.count);
   }
   // Names picked on the setup screen, period random.
@@ -232,7 +258,7 @@ function pickAssets(cfg) {
     return [];
   }
 
-  const pool = UNIVERSE.filter(a => (cfg.pool === "all" || a.kind === cfg.pool) && a.px.length >= need + 1);
+  const pool = UNIVERSE.filter(a => inPool(a, cfg.pool) && a.px.length >= need + 1);
 
   if (cfg.sync === "same") {
     // Choose a calendar date, then keep the assets that have enough data around it.
@@ -936,11 +962,11 @@ function showReveal() {
         <div class="card-title"><span class="dot" style="background:${a.color}"></span>${a.label}: ${a.meta.name}</div>
         <div class="card-chg ${cls(realRet)}" style="font-size:16px">${fmtPct(realRet, 1)}</div>
       </div>
-      <div class="meta">${a.meta.ticker} · ${a.meta.kind} · ${a.meta.region} · ${fmtDate(a.days[i0])} → ${fmtDate(a.days[i1])}</div>
+      <div class="meta">${[a.meta.ticker, a.meta.group, a.meta.sector, a.meta.region].filter(Boolean).join(" · ")} · ${fmtDate(a.days[i0])} → ${fmtDate(a.days[i1])}</div>
       <canvas style="height:200px"></canvas>
       <div class="kv">
-        <div><span>Real price at start*</span><b>${fmtReal(a.raw[i0])}</b></div>
-        <div><span>Real price at end*</span><b>${fmtReal(a.raw[i1])}</b></div>
+        <div><span>Real price at start*${a.meta.currency ? ` (${a.meta.currency})` : ""}</span><b>${fmtReal(a.raw[i0])}</b></div>
+        <div><span>Real price at end*${a.meta.currency ? ` (${a.meta.currency})` : ""}</span><b>${fmtReal(a.raw[i1])}</b></div>
         <div><span>Shown at ×${a.scale.toPrecision(3)}</span><b>${fmtPx(a.px[i0])} → ${fmtPx(a.px[i1])}</b></div>
         <div><span>Your trades</span><b>${a.nTrades}</b></div>
         <div><span>Fees on it</span><b>${fmt$(a.fees)}</b></div>

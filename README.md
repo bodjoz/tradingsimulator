@@ -2,10 +2,12 @@
 
 Open `index.html` in a browser (no server or install needed).
 
-- 1–5 anonymous charts are drawn at random from 59 real indexes and big-name stocks
-  (S&P 500, Nasdaq, Nikkei, DAX, Hang Seng…, Apple, GE, Tesla, Citigroup, GameStop…),
-  each from a random historical window (or all from the same window, if you choose).
-- Optionally, "Set the stage" lets you pick up to five names (grouped as indexes, US stocks and international stocks), the session start date, or both. Names without enough data for the chosen date and settings are greyed out. Picked names are shuffled across chart letters, so you still don't know which chart is which.
+- 1–5 anonymous charts are drawn at random from 229 real series, each from a random historical window
+  (or all from the same window, if you choose): developed and emerging-market indexes, US sector, industry,
+  country and leveraged ETFs, US large caps, airlines, biotech and micro caps, UK, European, Japanese,
+  Australian and China A-share stocks, Bitcoin and Ether, and commodities, bonds and FX.
+  The Universe setting narrows the draw (e.g. indexes + ETFs, US stocks only, crypto/commodities).
+- Optionally, "Set the stage" lets you pick up to five names (grouped by category, with a search box for name, ticker, sector or country), the session start date, or both. Names without enough data for the chosen date and settings are greyed out. Picked names are shuffled across chart letters, so you still don't know which chart is which.
 - Prices are rescaled and dates hidden; you trade at each day's close, paying the bid–ask spread plus broker commission.
 - Optionally, every chart can be normalized to 100 at the start of its visible history (the pre-session period, or the session start when no history is shown), so all charts are on one comparable scale. In this mode prices are shown only as % change, and you trade dollar amounts (fractional shares) instead of share counts.
 - `Space` pauses or resumes, `→` steps one day, `+`/`−` changes speed. The `Full`/`1Y`/`3M` buttons and `Log` change the chart view.
@@ -15,8 +17,24 @@ Open `index.html` in a browser (no server or install needed).
   - buying and holding five major indexes over the same dates: S&P 500, Nasdaq, Nikkei 225, FTSE 100 and DAX.
 
 ## Data
-`data.js` holds daily split- and dividend-adjusted closes from Yahoo Finance. Run this to refresh it or to add tickers:
+`data.js` (~19 MB) holds daily split- and dividend-adjusted closes from Yahoo Finance, rounded to 5 significant digits.
+It is built from the full-precision universe in `data/` (copied from the `priceanalysis` project):
 
-    python3 tools/fetch_data.py
+- `data/universe.csv`: ticker, name, type, group, sector, region, currency
+- `data/prices.parquet`: ticker, date, close (split-adjusted), adjclose (split- and dividend-adjusted), volume
+- `data/splits.csv`: split events
 
-Edit the `ASSETS` list in that script to change the universe.
+To refresh or add tickers (edit the list in `tools/fetch_universe.py`), then rebuild `data.js`:
+
+    uv run --with pandas --with pyarrow python tools/fetch_universe.py [TICKER ...]
+    uv run --with pandas --with pyarrow python tools/build_data.py
+
+`build_data.py` skips series you can't buy (bond yields, VIX), drops one-day bad ticks that fully reverse,
+and trims early history with known errors (`START_AFTER`).
+
+Refreshing never loses data by accident:
+- `fetch_universe.py` replaces only the tickers it downloads successfully. If a download fails, or comes back
+  with noticeably less history than what is stored, the stored data is kept. Files are replaced atomically.
+- `build_data.py` carries over any asset of the current `data.js` that `data/` lacks, and refuses to write
+  if an asset would lose more than 2% of its history (pass `--force` when that is intended, e.g. after adding
+  a `START_AFTER` cut).
