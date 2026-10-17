@@ -1,0 +1,3 @@
+# Player session logs and the scripts that analyze them (local only)
+playerlogs/
+analysis/

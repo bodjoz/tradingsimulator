@@ -195,3 +195,4 @@ tfoot td { font-weight: 600; background: var(--panel); }
 .bar i.pos { background: var(--up); }
 .bar i.neg { background: var(--down); }
 .actions { margin-top: 24px; text-align: center; }
+.actions button + button { margin-left: 10px; }

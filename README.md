@@ -12,6 +12,11 @@ Open `index.html` in a browser (no server or install needed).
 - Optionally, every chart can be normalized to 100 at the start of its visible history (the pre-session period, or the session start when no history is shown), so all charts are on one comparable scale. In this mode prices are shown only as % change, and you trade dollar amounts (fractional shares) instead of share counts.
 - `Space` pauses or resumes, `→` steps one day, `+`/`−` changes speed. The `Full`/`1Y`/`3M` buttons and `Log` change the chart view.
 - Optional capital-gains tax: you can pick short- or long-term rates, an annual allowance and loss carry-forward. Tax is settled every 252 trading days.
+- Optional session log ("Record a session log" on the setup screen): the reveal screen gets a "Download session log" button that saves one JSON file per game with
+  - `setup`: every setting (capital, charts, period, display mode, fee and tax model and presets, picked names/date)
+  - `charts`: each chart's identity, its real dates and real prices, the prices as shown, and the display scale
+  - `events`: every action (play/pause and why, step, speed, view, log scale, quick-fill buttons, orders including rejected ones), each with the wall-clock time and game day; orders and the end of the game carry a `seen` snapshot of what was on screen (displayed prices, bid/ask, daily and since-start change, chart view and the game days it showed, positions, cash, fees, tax)
+  - `result`: final and gross value and returns, fees, spread, taxes, rank, the full comparison table, every trade, and the daily equity curves.
 - At the end, open positions are liquidated. You then see which assets and dates you traded and every trade. A table compares your gross and net return, both total and annualized, with:
   - buying and holding each chart you played on its own, and all of them at equal weight
   - buying and holding five major indexes over the same dates: S&P 500, Nasdaq, Nikkei 225, FTSE 100 and DAX.

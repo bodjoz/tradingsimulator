@@ -125,6 +125,8 @@
       </div>
 
       <label class="check"><input type="checkbox" name="autopause"> Auto-pause while I type an order</label>
+      <label class="check"><input type="checkbox" name="record"> Record a session log for later analysis
+        <small class="muted">(settings, every action with what was on screen, and the results; download it as JSON on the reveal screen)</small></label>
 
       <button type="submit" class="primary big" id="btn-start">Start game</button>
       <p class="hint small">Prices are rescaled and dates hidden so you can't recognise the chart by its level.
@@ -202,6 +204,7 @@
       look lower than what was quoted at the time. Index levels are unadjusted; commodities are rolling front-month futures.
       Crypto trades every day, so a game year of crypto is about 8½ calendar months. Data: Yahoo Finance daily closes.</p>
     <div class="actions">
+      <button id="btn-log" class="big" hidden>Download session log</button>
       <button id="btn-again" class="primary big">Play again</button>
     </div>
   </div>

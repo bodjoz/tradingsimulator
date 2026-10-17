@@ -223,8 +223,10 @@ setupForm.onsubmit = e => {
     sync: stage.startDay != null ? "same" : f.get("sync"),   // a picked date is one shared period
     normalized: f.get("norm") === "norm",
     fee, tax,
+    feePreset: feeSel.value, taxPreset: taxSel.value,
     taxOn: tax.st > 0 || tax.lt > 0,
     autopause: f.get("autopause") === "on",
+    record: f.get("record") === "on",
   });
 };
 
@@ -309,6 +311,7 @@ function startGame(cfg) {
     trades: [], equity: [], bench: [],
     benchUnits: assets.map(a => cfg.capital / assets.length / a.px[cfg.prior]),
     hover: null, ended: false,
+    rec: cfg.record ? startLog(cfg, assets) : null,
   };
   recordEquity();
 
@@ -439,7 +442,7 @@ function settleTaxYear() {
 
 /* ---------- time ---------- */
 function advanceDay() {
-  if (G.t >= G.cfg.sessionDays - 1) { endGame(); return false; }
+  if (G.t >= G.cfg.sessionDays - 1) { endGame("finished"); return false; }
   G.t++;
   if (G.t % DAYS_PER_YEAR === 0) settleTaxYear();
   recordEquity();
@@ -458,8 +461,9 @@ function loop(ts) {
   raf = requestAnimationFrame(loop);
 }
 
-function setPlaying(p) {
+function setPlaying(p, why) {
   if (!G || G.ended) return;
+  if (p !== G.playing) logEvent(p ? "play" : "pause", why ? { why } : {});
   G.playing = p; G.lastTs = 0;
   const b = $("#btn-play");
   b.textContent = p ? "❚❚ Pause" : "▶ Play";
@@ -469,8 +473,10 @@ function setPlaying(p) {
 }
 
 function changeSpeed(d) {
+  const prev = G.speedIdx;
   G.speedIdx = Math.max(0, Math.min(SPEEDS.length - 1, G.speedIdx + d));
   $("#speed-label").textContent = SPEEDS[G.speedIdx] + " d/s";
+  if (G.speedIdx !== prev) logEvent("speed", { speed: SPEEDS[G.speedIdx] });
 }
 
 /* ---------- UI: chart cards ---------- */
@@ -514,16 +520,25 @@ function buildCharts() {
     };
     const ui = a.ui;
     ui.qty.oninput = () => { ui.msg = null; updatePreview(a); };
-    ui.qty.onfocus = () => { if (G.cfg.autopause && G.playing) { setPlaying(false); } };
+    ui.qty.onfocus = () => { if (G.cfg.autopause && G.playing) { setPlaying(false, "autopause"); } };
     ui.qty.onkeydown = e => { if (e.key === "Escape") ui.qty.blur(); };
-    $(".buy", card).onclick = () => { ui.msg = buy(a, orderQty(a, "buy", +ui.qty.value)); if (!ui.msg) ui.qty.value = ""; updatePreview(a); };
-    $(".sell", card).onclick = () => { ui.msg = sell(a, orderQty(a, "sell", +ui.qty.value)); if (!ui.msg) ui.qty.value = ""; updatePreview(a); };
+    const order = side => {
+      const input = ui.qty.value, qty = orderQty(a, side, +input), seen = G.rec && snapshot(), n = G.trades.length;
+      ui.msg = (side === "buy" ? buy : sell)(a, qty);
+      logEvent("order", { chart: a.label, side, input, inputUnit: N ? "$" : "shares", qty, error: ui.msg,
+        trade: ui.msg ? null : logTrade(G.trades[n]), seen });
+      if (!ui.msg) ui.qty.value = "";
+      updatePreview(a);
+    };
+    $(".buy", card).onclick = () => order("buy");
+    $(".sell", card).onclick = () => order("sell");
     for (const b of card.querySelectorAll(".quick button")) {
       b.onclick = () => {
         const q = b.dataset.q, hold = q[0] === "h", f = parseFloat(hold ? q.slice(1) : q);
         if (N) ui.qty.value = floorCents(hold ? a.shares * f * bidPx(a) : maxBuyQty(askPx(a), G.cash * f) * askPx(a)).toFixed(2);
         else ui.qty.value = hold ? Math.floor(a.shares * f) : maxBuyQty(askPx(a), G.cash * f);
         ui.msg = null; updatePreview(a);
+        logEvent("fill", { chart: a.label, button: b.textContent, value: ui.qty.value });
       };
     }
     ui.canvas.onmousemove = e => { const r = ui.canvas.getBoundingClientRect(); G.hover = { a, x: e.clientX - r.left }; drawChart(a); };
@@ -630,17 +645,20 @@ function niceTicks(lo, hi, n) {
   return out;
 }
 
+// Local index range [x0, x1] of a chart's x-axis; "full" runs to fullEnd, the zoomed views trail "now".
+function viewRange(view, lastIdx, fullEnd) {
+  if (view === "full") return [0, fullEnd];
+  const W = view === "1y" ? 252 : 63, x1 = Math.max(lastIdx + Math.round(W * 0.08), W);
+  return [Math.max(0, x1 - W), x1];
+}
+
 /* Draws a price chart. opts.reveal = show real dates and the full session. */
 function drawChart(a, opts = {}) {
   const cv = opts.canvas || a.ui.canvas;
   const { ctx, w, h } = setupCanvas(cv);
   const c = G.cfg, P = c.prior;
   const lastIdx = P + G.t;                                  // local index of "now"
-  const fullEnd = P + c.sessionDays - 1;
-  let x0, x1;
-  const view = opts.reveal ? "full" : G.view;
-  if (view === "full") { x0 = 0; x1 = opts.reveal ? lastIdx : fullEnd; }
-  else { const W = view === "1y" ? 252 : 63; x1 = Math.max(lastIdx + Math.round(W * 0.08), W); x0 = Math.max(0, x1 - W); }
+  const [x0, x1] = viewRange(opts.reveal ? "full" : G.view, lastIdx, opts.reveal ? lastIdx : P + c.sessionDays - 1);
   const visEnd = Math.min(lastIdx, x1);
 
   let lo = Infinity, hi = -Infinity;
@@ -783,21 +801,23 @@ function drawEquity(cv = $("#equity"), cssH = 140) {
 
 /* ---------- controls ---------- */
 $("#btn-play").onclick = () => setPlaying(!G.playing);
-$("#btn-step").onclick = () => { if (G.playing) setPlaying(false); if (advanceDay()) updateAll(); };
+$("#btn-step").onclick = () => { if (G.playing) setPlaying(false, "step"); logEvent("step"); if (advanceDay()) updateAll(); };
 $("#speed-up").onclick = () => changeSpeed(1);
 $("#speed-down").onclick = () => changeSpeed(-1);
-$("#log-scale").onchange = e => { G.log = e.target.checked; updateAll(); };
+$("#log-scale").onchange = e => { G.log = e.target.checked; logEvent("scale", { log: G.log }); updateAll(); };
 for (const b of document.querySelectorAll("#view-seg button")) {
   b.onclick = () => {
     G.view = b.dataset.view;
     document.querySelectorAll("#view-seg button").forEach(x => x.classList.toggle("on", x === b));
+    logEvent("view", { view: G.view });
     updateAll();
   };
 }
 $("#btn-end").onclick = () => {
   if (G.t < G.cfg.sessionDays - 1 && !confirm("End the game now? Open positions will be sold at the current price.")) return;
-  endGame();
+  endGame("ended early");
 };
+$("#btn-log").onclick = downloadLog;
 $("#btn-again").onclick = () => { $("#reveal").hidden = true; $("#setup").hidden = false; window.scrollTo(0, 0); };
 
 document.addEventListener("keydown", e => {
@@ -816,10 +836,92 @@ window.addEventListener("resize", () => {
   if (!$("#reveal").hidden) G.assets.forEach(a => a.revealCanvas && drawChart(a, { canvas: a.revealCanvas, reveal: true }));
 });
 
+/* ---------- session log (optional) ---------- */
+// One JSON document per game: the settings, each chart as shown and as it really was, every action
+// with what was on screen at that moment, and the results. Turned on with "Record a session log".
+const sig = (v, d = 8) => typeof v === "number" && isFinite(v) ? +v.toPrecision(d) : v;
+
+function startLog(cfg, assets) {
+  return {
+    app: "Blind Market", version: 1,
+    startedAt: new Date().toISOString(), t0: performance.now(),
+    client: { userAgent: navigator.userAgent, viewport: [innerWidth, innerHeight], dpr: devicePixelRatio || 1 },
+    setup: { ...cfg, startDate: cfg.startDay != null ? fmtDate(cfg.startDay) : null, daysPerYear: DAYS_PER_YEAR },
+    // Series index i is game day i - prior (negative = visible history before the session); shown = real × scale.
+    charts: assets.map(a => ({
+      label: a.label, ticker: a.meta.ticker, name: a.meta.name, kind: a.meta.kind, group: a.meta.group,
+      sector: a.meta.sector, region: a.meta.region, currency: a.meta.currency, scale: a.scale,
+      firstVisibleDate: fmtDate(a.days[0]), sessionStartDate: fmtDate(a.days[cfg.prior]), sessionEndDate: fmtDate(a.days[a.days.length - 1]),
+      dates: a.days.map(fmtDate), shown: a.px.map(v => sig(v)), real: Array.from(a.raw),
+    })),
+    // ms = wall-clock time since the game started; t = game day (0-based) when it happened.
+    events: [],
+  };
+}
+
+function logEvent(type, data = {}) {
+  if (!G || !G.rec) return;
+  G.rec.events.push({ type, ms: Math.round(performance.now() - G.rec.t0), t: G.t, ...data });
+}
+
+// What the player had in front of them: chart view settings, the portfolio panel and each chart card.
+function snapshot() {
+  const c = G.cfg, P = c.prior, lastIdx = P + G.t;
+  const [x0, x1] = viewRange(G.view, lastIdx, P + c.sessionDays - 1);
+  return {
+    playing: G.playing, speed: SPEEDS[G.speedIdx], view: G.view, logScale: G.log, normalized: c.normalized,
+    visibleDays: [x0 - P, Math.min(lastIdx, x1) - P],   // game days drawn on the charts
+    equity: sig(equityNow()), cash: sig(G.cash), invested: sig(mktValue()),
+    feesPaid: G.feesTotal, taxesPaid: G.taxesPaid, estTax: estimatedTax(), carryLoss: G.carryLoss,
+    charts: G.assets.map(a => {
+      const p = priceAt(a), prev = G.t > 0 ? priceAt(a, G.t - 1) : a.px[P - 1] ?? p;
+      const cost = a.lots.reduce((s, l) => s + l.q * l.cost, 0);
+      return {
+        label: a.label, display: a.ui.price.textContent, mid: sig(p), bid: sig(bidPx(a)), ask: sig(askPx(a)),
+        changeToday: sig(p / prev - 1), changeSinceStart: sig(p / priceAt(a, 0) - 1),
+        shares: a.shares, costBasis: sig(cost), value: sig(a.shares * p), unrealized: sig(a.shares * p - cost), realized: sig(a.realized),
+      };
+    }),
+  };
+}
+
+function logTrade(tr) {
+  const a = tr.a;
+  return {
+    t: tr.t, side: tr.side, chart: a ? a.label : null, ticker: a ? a.meta.ticker : null,
+    date: a ? fmtDate(a.days[G.cfg.prior + tr.t]) : null, qty: tr.qty,
+    fill: sig(tr.px), mid: sig(tr.mid), fillReal: a ? sig(tr.px / a.scale) : null,
+    fee: tr.fee, cashFlow: sig(tr.total), pnl: sig(tr.pnl), note: tr.note || null,
+  };
+}
+
+function finishLog(summary, cmp) {
+  if (!G.rec) return;
+  const P = G.cfg.prior;
+  G.rec.endedAt = new Date().toISOString();
+  G.rec.result = {
+    ...summary, lastDay: G.t,
+    charts: G.assets.map(a => ({ label: a.label, realReturn: sig(a.raw[P + G.t] / a.raw[P] - 1), trades: a.nTrades, fees: a.fees, realizedPnl: sig(a.realized) })),
+    comparison: cmp.map(({ color, ...r }) => r),
+    trades: G.trades.map(logTrade),
+    equity: G.equity.map(v => sig(v)), equalWeightBuyHold: G.bench.map(v => sig(v)),
+  };
+}
+
+function downloadLog() {
+  const { t0, ...log } = G.rec;
+  const link = el("a");
+  link.href = URL.createObjectURL(new Blob([JSON.stringify(log)], { type: "application/json" }));
+  link.download = `blind-market-${log.startedAt.slice(0, 19).replace(/[T:]/g, "-")}.json`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+}
+
 /* ---------- end & reveal ---------- */
-function endGame() {
+function endGame(why) {
   if (G.ended) return;
-  setPlaying(false);
+  setPlaying(false, "end");
+  logEvent("end", { why, seen: G.rec && snapshot() });
   G.ended = true;
   cancelAnimationFrame(raf);
   for (const a of G.assets) if (a.shares > 0) sell(a, a.shares, "final liquidation");
@@ -940,6 +1042,10 @@ function showReveal() {
   if (nTrades === 0) verdict = "You didn't trade at all — your money sat in cash the whole time.";
   else if (rank === 1) verdict = `You beat every benchmark — <b class="up">${fmt$(final - best.net, 0)}</b> ahead of the runner-up (${best.name}).`;
   else verdict = `You finished <b>#${rank} of ${ranked.length}</b> on net return. The best choice was ${best.name}, which would have left you <b class="down">${fmt$(best.net - final, 0)}</b> richer.`;
+  finishLog({ final, netReturn: ret, grossFinal: gross, grossReturn: gret, netPerYear: annualize(ret), grossPerYear: annualize(gret),
+    gameYears: yrs, nTrades, feesPaid: G.feesTotal, spreadPaid: spreadCost, taxesPaid: G.taxesPaid,
+    rank, rankedOf: ranked.length, best: best.name }, cmp);
+  $("#btn-log").hidden = !G.rec;
 
   $("#reveal-summary").innerHTML = `
     <div class="tile"><span>Final value (after fees${c.taxOn ? " & taxes" : ""})</span><b>${fmt$(final, 0)}</b><small>from ${fmt$(c.capital, 0)}</small></div>
